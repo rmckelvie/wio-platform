@@ -11,6 +11,9 @@ interface ExerciseFormProps {
   error?: string
 }
 
+const inputClass =
+  'rounded border border-input bg-card px-3 py-2 outline-none focus:border-brand focus:ring-2 focus:ring-brand/30'
+
 export function ExerciseForm({
   action,
   initial,
@@ -27,7 +30,7 @@ export function ExerciseForm({
           required
           defaultValue={initial?.name ?? ''}
           placeholder="e.g. Trap bar deadlift"
-          className="rounded border px-3 py-2"
+          className={inputClass}
         />
       </label>
 
@@ -38,9 +41,11 @@ export function ExerciseForm({
           type="url"
           defaultValue={initial?.video_url ?? ''}
           placeholder="https://youtube.com/..."
-          className="rounded border px-3 py-2"
+          className={inputClass}
         />
-        <span className="text-xs text-gray-500">Optional — demo link clients can open.</span>
+        <span className="text-xs text-muted-foreground">
+          Optional — demo link clients can open.
+        </span>
       </label>
 
       <label className="flex flex-col gap-1">
@@ -50,14 +55,14 @@ export function ExerciseForm({
           rows={3}
           defaultValue={initial?.default_notes ?? ''}
           placeholder="Cues, tempo, common mistakes..."
-          className="rounded border px-3 py-2"
+          className={inputClass}
         />
-        <span className="text-xs text-gray-500">
+        <span className="text-xs text-muted-foreground">
           Shown to clients alongside this exercise. Can be overridden per row.
         </span>
       </label>
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p className="text-sm text-destructive">{error}</p>}
 
       <div>
         <Button type="submit">{submitLabel}</Button>

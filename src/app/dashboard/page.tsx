@@ -2,16 +2,22 @@ import Link from 'next/link'
 import { requireUser } from '@/lib/auth'
 import { logout } from './actions'
 import { Button, buttonVariants } from '@/components/ui/button'
+import { WioLogo } from '@/components/wio-logo'
 
 export default async function DashboardPage() {
   const me = await requireUser()
 
   return (
     <main className="mx-auto max-w-2xl px-6 py-12">
-      <h1 className="mb-2 text-2xl font-semibold">Dashboard</h1>
-      <p className="mb-6 text-sm text-gray-600">
-        Signed in as {me.email} ({me.role})
-      </p>
+      <div className="mb-8 flex items-center gap-4">
+        <WioLogo variant="mark" size={48} />
+        <div>
+          <h1 className="text-2xl font-semibold">Dashboard</h1>
+          <p className="text-sm text-muted-foreground">
+            {me.email} <span className="text-brand">·</span> {me.role}
+          </p>
+        </div>
+      </div>
 
       {me.role === 'admin' && (
         <div className="mb-6">
@@ -22,7 +28,7 @@ export default async function DashboardPage() {
       )}
 
       <form action={logout}>
-        <Button type="submit" variant="outline">
+        <Button type="submit" variant="ghost">
           Log out
         </Button>
       </form>

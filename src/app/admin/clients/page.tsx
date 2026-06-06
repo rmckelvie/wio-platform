@@ -7,8 +7,11 @@ interface ClientRow {
   id: string
   email: string
   display_name: string | null
-  status: 'active' | 'archived' | null  // null = no clients_admin row yet
+  status: 'active' | 'archived' | null
 }
+
+const inputClass =
+  'rounded border border-input bg-card px-3 py-2 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/30'
 
 export default async function ClientsPage({
   searchParams,
@@ -36,11 +39,16 @@ export default async function ClientsPage({
     id: string
     email: string
     display_name: string | null
-    clients_admin: { status: 'active' | 'archived' } | { status: 'active' | 'archived' }[] | null
+    clients_admin:
+      | { status: 'active' | 'archived' }
+      | { status: 'active' | 'archived' }[]
+      | null
   }
 
   const clients: ClientRow[] = ((profileRows ?? []) as Joined[]).map((p) => {
-    const link = Array.isArray(p.clients_admin) ? p.clients_admin[0] : p.clients_admin
+    const link = Array.isArray(p.clients_admin)
+      ? p.clients_admin[0]
+      : p.clients_admin
     return {
       id: p.id,
       email: p.email,
@@ -60,34 +68,40 @@ export default async function ClientsPage({
       </div>
 
       {/* Invite form */}
-      <section className="rounded border bg-gray-50 p-4">
+      <section className="rounded border border-border bg-card p-4">
         <h2 className="mb-3 text-sm font-medium">Invite a new client</h2>
         <form action={inviteClient} className="flex flex-wrap items-end gap-3">
-          <label className="flex flex-1 flex-col gap-1 min-w-[240px]">
-            <span className="text-xs">Email</span>
+          <label className="flex min-w-[240px] flex-1 flex-col gap-1">
+            <span className="text-xs uppercase tracking-wide text-muted-foreground">
+              Email
+            </span>
             <input
               name="email"
               type="email"
               required
               placeholder="client@example.com"
-              className="rounded border bg-white px-3 py-2 text-sm"
+              className={inputClass}
             />
           </label>
-          <label className="flex flex-1 flex-col gap-1 min-w-[200px]">
-            <span className="text-xs">Display name (optional)</span>
+          <label className="flex min-w-[200px] flex-1 flex-col gap-1">
+            <span className="text-xs uppercase tracking-wide text-muted-foreground">
+              Display name (optional)
+            </span>
             <input
               name="display_name"
               type="text"
               placeholder="Ruari Souter"
-              className="rounded border bg-white px-3 py-2 text-sm"
+              className={inputClass}
             />
           </label>
           <Button type="submit">Send invite</Button>
         </form>
         {error && (
-          <p className="mt-3 text-sm text-red-600">{error}</p>
+          <p className="mt-3 text-sm text-destructive">
+            {decodeURIComponent(error)}
+          </p>
         )}
-        <p className="mt-2 text-xs text-gray-500">
+        <p className="mt-2 text-xs text-muted-foreground">
           Sends a magic link. The client signs in by clicking it.
         </p>
       </section>
@@ -97,8 +111,8 @@ export default async function ClientsPage({
           href="/admin/clients"
           className={
             !showArchived
-              ? 'rounded border bg-gray-100 px-3 py-1'
-              : 'rounded border px-3 py-1 text-gray-600 hover:bg-gray-50'
+              ? 'rounded border border-border bg-secondary px-3 py-1 text-foreground'
+              : 'rounded border border-border px-3 py-1 text-muted-foreground hover:bg-muted'
           }
         >
           Active
@@ -107,8 +121,8 @@ export default async function ClientsPage({
           href="/admin/clients?show=archived"
           className={
             showArchived
-              ? 'rounded border bg-gray-100 px-3 py-1'
-              : 'rounded border px-3 py-1 text-gray-600 hover:bg-gray-50'
+              ? 'rounded border border-border bg-secondary px-3 py-1 text-foreground'
+              : 'rounded border border-border px-3 py-1 text-muted-foreground hover:bg-muted'
           }
         >
           Archived
@@ -116,17 +130,22 @@ export default async function ClientsPage({
       </div>
 
       {filtered.length === 0 ? (
-        <p className="text-sm text-gray-500">
-          {showArchived ? 'No archived clients.' : 'No clients yet — invite one above.'}
+        <p className="text-sm text-muted-foreground">
+          {showArchived
+            ? 'No archived clients.'
+            : 'No clients yet — invite one above.'}
         </p>
       ) : (
-        <ul className="divide-y rounded border">
+        <ul className="divide-y divide-border rounded border border-border">
           {filtered.map((c) => (
-            <li key={c.id} className="flex items-center justify-between gap-4 p-4">
+            <li
+              key={c.id}
+              className="flex items-center justify-between gap-4 p-4"
+            >
               <div className="min-w-0 flex-1">
                 <div className="font-medium">{c.display_name || c.email}</div>
                 {c.display_name && (
-                  <div className="text-xs text-gray-500">{c.email}</div>
+                  <div className="text-xs text-muted-foreground">{c.email}</div>
                 )}
               </div>
               <div className="flex shrink-0 items-center gap-2">

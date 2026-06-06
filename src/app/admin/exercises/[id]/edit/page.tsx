@@ -28,7 +28,10 @@ export default async function EditExercisePage({
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3 text-sm">
-        <Link href="/admin/exercises" className="text-gray-600 hover:underline">
+        <Link
+          href="/admin/exercises"
+          className="text-muted-foreground hover:text-foreground hover:underline"
+        >
           ← Exercises
         </Link>
       </div>

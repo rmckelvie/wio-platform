@@ -42,8 +42,8 @@ export default async function ExercisesPage({
           href="/admin/exercises"
           className={
             !showArchived
-              ? 'rounded border bg-gray-100 px-3 py-1'
-              : 'rounded border px-3 py-1 text-gray-600 hover:bg-gray-50'
+              ? 'rounded border border-border bg-secondary px-3 py-1 text-foreground'
+              : 'rounded border border-border px-3 py-1 text-muted-foreground hover:bg-muted'
           }
         >
           Active
@@ -52,8 +52,8 @@ export default async function ExercisesPage({
           href="/admin/exercises?show=archived"
           className={
             showArchived
-              ? 'rounded border bg-gray-100 px-3 py-1'
-              : 'rounded border px-3 py-1 text-gray-600 hover:bg-gray-50'
+              ? 'rounded border border-border bg-secondary px-3 py-1 text-foreground'
+              : 'rounded border border-border px-3 py-1 text-muted-foreground hover:bg-muted'
           }
         >
           Archived
@@ -61,21 +61,24 @@ export default async function ExercisesPage({
       </div>
 
       {error && (
-        <p className="rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+        <p className="rounded border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
           {error.message}
         </p>
       )}
 
       {exercises.length === 0 ? (
-        <p className="text-sm text-gray-500">
+        <p className="text-sm text-muted-foreground">
           {showArchived
             ? 'No archived exercises.'
             : 'No exercises yet — add your first one.'}
         </p>
       ) : (
-        <ul className="divide-y rounded border">
+        <ul className="divide-y divide-border rounded border border-border">
           {exercises.map((ex) => (
-            <li key={ex.id} className="flex items-center justify-between gap-4 p-4">
+            <li
+              key={ex.id}
+              className="flex items-center justify-between gap-4 p-4"
+            >
               <div className="min-w-0 flex-1">
                 <div className="font-medium">{ex.name}</div>
                 {ex.video_url && (
@@ -83,13 +86,15 @@ export default async function ExercisesPage({
                     href={ex.video_url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="block truncate text-xs text-blue-600 underline"
+                    className="block truncate text-xs text-brand underline-offset-4 hover:underline"
                   >
                     {ex.video_url}
                   </a>
                 )}
                 {ex.default_notes && (
-                  <div className="mt-1 text-xs text-gray-500">{ex.default_notes}</div>
+                  <div className="mt-1 text-xs text-muted-foreground">
+                    {ex.default_notes}
+                  </div>
                 )}
               </div>
               <div className="flex shrink-0 items-center gap-2">
