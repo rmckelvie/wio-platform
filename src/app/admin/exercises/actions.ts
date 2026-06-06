@@ -1,0 +1,60 @@
+'use server'
+
+import { revalidatePath } from 'next/cache'
+import { redirect } from 'next/navigation'
+import { createClient } from '@/lib/supabase/server'
+import { requireAdmin } from '@/lib/auth'
+
+function emptyToNull(v: FormDataEntryValue | null): string | null {
+  const s = (v ?? '').toString().trim()
+  return s.length === 0 ? null : s
+}
+
+export async function createExercise(formData: FormData) {
+  await requireAdmin()
+  const supabase = await createClient()
+
+  const name = (formData.get('name') ?? '').toString().trim()
+  if (!name) redirect('/admin/exercises/new?error=name+required')
+
+  const { error } = await supabase.from('exercises').insert({
+    name,
+    video_url: emptyToNull(formData.get('video_url')),
+    default_notes: emptyToNull(formData.get('default_notes')),
+  })
+
+  if (error) redirect(`/admin/exercises/new?error=${encodeURIComponent(error.message)}`)
+
+  revalidatePath('/admin/exercises')
+  redirect('/admin/exercises')
+}
+
+export async function updateExercise(id: string, formData: FormData) {
+  await requireAdmin()
+  const supabase = await createClient()
+
+  const name = (formData.get('name') ?? '').toString().trim()
+  if (!name) redirect(`/admin/exercises/${id}/edit?error=name+required`)
+
+  const { error } = await supabase
+    .from('exercises')
+    .update({
+      name,
+      video_url: emptyToNull(formData.get('video_url')),
+      default_notes: emptyToNull(formData.get('default_notes')),
+    })
+    .eq('id', id)
+
+  if (error)
+    redirect(`/admin/exercises/${id}/edit?error=${encodeURIComponent(error.message)}`)
+
+  revalidatePath('/admin/exercises')
+  redirect('/admin/exercises')
+}
+
+export async function setArchived(id: string, archived: boolean) {
+  await requireAdmin()
+  const supabase = await createClient()
+  await supabase.from('exercises').update({ archived }).eq('id', id)
+  revalidatePath('/admin/exercises')
+}
