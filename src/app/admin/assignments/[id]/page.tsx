@@ -176,7 +176,10 @@ export default async function AssignmentDetailPage({
                   key={w.id}
                   className="flex items-center justify-between gap-4 p-4"
                 >
-                  <div className="min-w-0 flex-1">
+                  <Link
+                    href={`/admin/weeks/${w.id}`}
+                    className="min-w-0 flex-1 hover:opacity-80"
+                  >
                     <div className="flex items-center gap-2">
                       <span className="font-medium">
                         Week {w.week_index}
@@ -193,11 +196,16 @@ export default async function AssignmentDetailPage({
                         ? 'No sessions yet'
                         : `${sessionCount} session${sessionCount === 1 ? '' : 's'}`}
                     </div>
-                  </div>
-                  <div className="shrink-0 text-xs text-muted-foreground">
-                    {/* week detail page comes in chunk 2 */}
-                    coming soon
-                  </div>
+                  </Link>
+                  <Link
+                    href={`/admin/weeks/${w.id}`}
+                    className={buttonVariants({
+                      variant: 'outline',
+                      size: 'sm',
+                    })}
+                  >
+                    Open
+                  </Link>
                 </li>
               )
             })}
