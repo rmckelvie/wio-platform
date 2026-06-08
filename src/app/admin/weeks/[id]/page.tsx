@@ -11,6 +11,10 @@ import {
   deleteSession,
   deleteSection,
   deleteAssignedExercise,
+  moveSession,
+  moveSection,
+  moveAssignedExercise,
+  copyWeekContents,
 } from './actions'
 
 interface ExerciseLibraryRow {
@@ -117,6 +121,45 @@ export default async function WeekPage({
 
   const library = (libraryRows ?? []) as ExerciseLibraryRow[]
 
+  // All other weeks the admin can copy from (any assignment, any client)
+  const { data: copySourceRows } = await supabase
+    .from('assignment_weeks')
+    .select(
+      `
+      id, week_index, name,
+      client_assignments!inner (
+        name, start_date, client_id,
+        profiles ( email, display_name )
+      )
+    `,
+    )
+    .neq('id', weekId)
+    .limit(200)
+
+  type CopySource = {
+    id: string
+    week_index: number
+    name: string | null
+    client_assignments: {
+      name: string
+      start_date: string
+      client_id: string
+      profiles: { email: string; display_name: string | null } | null
+    }
+  }
+  const copySources = ((copySourceRows ?? []) as unknown as CopySource[])
+    .map((r) => ({
+      id: r.id,
+      label: `${r.client_assignments.profiles?.display_name || r.client_assignments.profiles?.email || 'client'} — ${r.client_assignments.name} — Week ${r.week_index}${r.name ? ` (${r.name})` : ''}`,
+      start_date: r.client_assignments.start_date,
+    }))
+    .sort((a, b) => {
+      // Most recent assignment first; otherwise alphabetical label
+      const dt = b.start_date.localeCompare(a.start_date)
+      if (dt !== 0) return dt
+      return a.label.localeCompare(b.label)
+    })
+
   const assignment = week.client_assignments!
   const clientName =
     assignment.profiles?.display_name || assignment.profiles?.email || 'client'
@@ -171,6 +214,43 @@ export default async function WeekPage({
         </p>
       )}
 
+      {/* Copy from another week */}
+      {copySources.length > 0 && (
+        <form
+          action={copyWeekContents.bind(null, week.id)}
+          className="flex flex-wrap items-end gap-2 rounded border border-border bg-card/50 p-3"
+        >
+          <label className="flex min-w-[260px] flex-1 flex-col gap-1">
+            <span className="text-xs uppercase tracking-wide text-muted-foreground">
+              Copy from another week
+            </span>
+            <select
+              name="source_week_id"
+              required
+              defaultValue=""
+              className={inputClass}
+            >
+              <option value="" disabled>
+                Pick a source week…
+              </option>
+              {copySources.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <Button type="submit" size="sm" variant="outline">
+            Append copy
+          </Button>
+          <p className="w-full text-xs text-muted-foreground">
+            Appends a snapshot of the source week&apos;s sessions, sections, and
+            prescriptions below whatever&apos;s already here. Edits afterwards
+            don&apos;t affect the source.
+          </p>
+        </form>
+      )}
+
       {/* Sessions */}
       <div className="space-y-6">
         {week.assigned_sessions.length === 0 && (
@@ -179,11 +259,13 @@ export default async function WeekPage({
           </p>
         )}
 
-        {week.assigned_sessions.map((session) => (
+        {week.assigned_sessions.map((session, i) => (
           <SessionCard
             key={session.id}
             session={session}
             library={library}
+            isFirst={i === 0}
+            isLast={i === week.assigned_sessions.length - 1}
           />
         ))}
 
@@ -216,9 +298,13 @@ export default async function WeekPage({
 function SessionCard({
   session,
   library,
+  isFirst,
+  isLast,
 }: {
   session: AssignedSession
   library: ExerciseLibraryRow[]
+  isFirst: boolean
+  isLast: boolean
 }) {
   const usedSectionTypes = new Set(
     session.assigned_sections.map((s) => s.section_type),
@@ -230,11 +316,47 @@ function SessionCard({
   return (
     <article className="rounded border border-border bg-card p-4">
       <header className="mb-4 flex items-center justify-between gap-2">
-        <div>
-          <span className="text-xs uppercase tracking-wide text-muted-foreground">
-            Session {session.session_index}
-          </span>
-          <h2 className="text-lg font-medium">{session.name}</h2>
+        <div className="flex items-center gap-2">
+          <div className="flex flex-col">
+            <form
+              action={async () => {
+                'use server'
+                await moveSession(session.id, 'up')
+              }}
+            >
+              <Button
+                type="submit"
+                variant="ghost"
+                size="icon-xs"
+                disabled={isFirst}
+                aria-label="Move session up"
+              >
+                ↑
+              </Button>
+            </form>
+            <form
+              action={async () => {
+                'use server'
+                await moveSession(session.id, 'down')
+              }}
+            >
+              <Button
+                type="submit"
+                variant="ghost"
+                size="icon-xs"
+                disabled={isLast}
+                aria-label="Move session down"
+              >
+                ↓
+              </Button>
+            </form>
+          </div>
+          <div>
+            <span className="text-xs uppercase tracking-wide text-muted-foreground">
+              Session {session.session_index}
+            </span>
+            <h2 className="text-lg font-medium">{session.name}</h2>
+          </div>
         </div>
         <div className="flex items-center gap-1">
           <Link
@@ -262,11 +384,13 @@ function SessionCard({
       </header>
 
       <div className="space-y-4">
-        {session.assigned_sections.map((section) => (
+        {session.assigned_sections.map((section, i) => (
           <SectionBlock
             key={section.id}
             section={section}
             library={library}
+            isFirst={i === 0}
+            isLast={i === session.assigned_sections.length - 1}
           />
         ))}
 
@@ -309,9 +433,13 @@ function SessionCard({
 function SectionBlock({
   section,
   library,
+  isFirst,
+  isLast,
 }: {
   section: AssignedSection
   library: ExerciseLibraryRow[]
+  isFirst: boolean
+  isLast: boolean
 }) {
   // Show exercises whose tags include this section type, plus untagged
   // (empty section_types acts as wildcard so legacy rows stay reachable).
@@ -323,9 +451,43 @@ function SectionBlock({
   return (
     <section className="rounded border border-border/60 bg-background p-3">
       <header className="mb-2 flex items-center justify-between">
-        <h3 className="text-sm font-medium uppercase tracking-wide text-brand">
-          {sectionLabel(section.section_type)}
-        </h3>
+        <div className="flex items-center gap-2">
+          <form
+            action={async () => {
+              'use server'
+              await moveSection(section.id, 'up')
+            }}
+          >
+            <Button
+              type="submit"
+              variant="ghost"
+              size="icon-xs"
+              disabled={isFirst}
+              aria-label="Move section up"
+            >
+              ↑
+            </Button>
+          </form>
+          <form
+            action={async () => {
+              'use server'
+              await moveSection(section.id, 'down')
+            }}
+          >
+            <Button
+              type="submit"
+              variant="ghost"
+              size="icon-xs"
+              disabled={isLast}
+              aria-label="Move section down"
+            >
+              ↓
+            </Button>
+          </form>
+          <h3 className="text-sm font-medium uppercase tracking-wide text-brand">
+            {sectionLabel(section.section_type)}
+          </h3>
+        </div>
         <form
           action={async () => {
             'use server'
@@ -349,62 +511,100 @@ function SectionBlock({
         </p>
       ) : (
         <ul className="mb-3 divide-y divide-border/60">
-          {section.assigned_exercises.map((ae) => (
-            <li
-              key={ae.id}
-              className="flex items-center gap-3 py-2 text-sm"
-            >
-              <div className="min-w-0 flex-1">
-                <div className="font-medium">
-                  {ae.exercises?.name ?? '(deleted exercise)'}
+          {section.assigned_exercises.map((ae, i) => {
+            const isFirstEx = i === 0
+            const isLastEx = i === section.assigned_exercises.length - 1
+            return (
+              <li
+                key={ae.id}
+                className="flex items-center gap-3 py-2 text-sm"
+              >
+                <div className="flex shrink-0 flex-col">
+                  <form
+                    action={async () => {
+                      'use server'
+                      await moveAssignedExercise(ae.id, 'up')
+                    }}
+                  >
+                    <Button
+                      type="submit"
+                      variant="ghost"
+                      size="icon-xs"
+                      disabled={isFirstEx}
+                      aria-label="Move exercise up"
+                    >
+                      ↑
+                    </Button>
+                  </form>
+                  <form
+                    action={async () => {
+                      'use server'
+                      await moveAssignedExercise(ae.id, 'down')
+                    }}
+                  >
+                    <Button
+                      type="submit"
+                      variant="ghost"
+                      size="icon-xs"
+                      disabled={isLastEx}
+                      aria-label="Move exercise down"
+                    >
+                      ↓
+                    </Button>
+                  </form>
                 </div>
-                {ae.notes && (
-                  <div className="text-xs text-muted-foreground">
-                    {ae.notes}
+                <div className="min-w-0 flex-1">
+                  <div className="font-medium">
+                    {ae.exercises?.name ?? '(deleted exercise)'}
                   </div>
-                )}
-                {ae.exercises?.video_url && (
-                  <a
-                    href={ae.exercises.video_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs text-brand hover:underline"
+                  {ae.notes && (
+                    <div className="text-xs text-muted-foreground">
+                      {ae.notes}
+                    </div>
+                  )}
+                  {ae.exercises?.video_url && (
+                    <a
+                      href={ae.exercises.video_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-brand hover:underline"
+                    >
+                      Demo
+                    </a>
+                  )}
+                </div>
+                <div className="w-16 text-right tabular-nums text-xs">
+                  {ae.prescribed_sets ?? '—'}
+                </div>
+                <div className="w-20 text-right tabular-nums text-xs">
+                  {ae.prescribed_reps ?? '—'}
+                </div>
+                <div className="flex shrink-0 items-center gap-1">
+                  <Link
+                    href={`/admin/assigned-exercises/${ae.id}/edit`}
+                    className={buttonVariants({ variant: 'ghost', size: 'xs' })}
                   >
-                    Demo
-                  </a>
-                )}
-              </div>
-              <div className="w-16 text-right tabular-nums text-xs">
-                {ae.prescribed_sets ?? '—'}
-              </div>
-              <div className="w-20 text-right tabular-nums text-xs">
-                {ae.prescribed_reps ?? '—'}
-              </div>
-              <div className="flex shrink-0 items-center gap-1">
-                <Link
-                  href={`/admin/assigned-exercises/${ae.id}/edit`}
-                  className={buttonVariants({ variant: 'ghost', size: 'xs' })}
-                >
-                  Edit
-                </Link>
-                <form
-                  action={async () => {
-                    'use server'
-                    await deleteAssignedExercise(ae.id)
-                  }}
-                >
-                  <Button
-                    type="submit"
-                    variant="ghost"
-                    size="xs"
-                    className="text-destructive hover:bg-destructive/10"
+                    Edit
+                  </Link>
+                  <form
+                    action={async () => {
+                      'use server'
+                      await deleteAssignedExercise(ae.id)
+                    }}
                   >
-                    ×
-                  </Button>
-                </form>
-              </div>
-            </li>
-          ))}
+                    <Button
+                      type="submit"
+                      variant="ghost"
+                      size="xs"
+                      className="text-destructive hover:bg-destructive/10"
+                    >
+                      ×
+                    </Button>
+                  </form>
+                </div>
+              </li>
+            )
+          })}
         </ul>
       )}
 
