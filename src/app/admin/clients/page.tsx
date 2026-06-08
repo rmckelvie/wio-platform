@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { inviteClient, setClientStatus } from './actions'
-import { Button } from '@/components/ui/button'
+import { Button, buttonVariants } from '@/components/ui/button'
 
 interface ClientRow {
   id: string
@@ -142,13 +142,22 @@ export default async function ClientsPage({
               key={c.id}
               className="flex items-center justify-between gap-4 p-4"
             >
-              <div className="min-w-0 flex-1">
+              <Link
+                href={`/admin/clients/${c.id}`}
+                className="min-w-0 flex-1 hover:opacity-80"
+              >
                 <div className="font-medium">{c.display_name || c.email}</div>
                 {c.display_name && (
                   <div className="text-xs text-muted-foreground">{c.email}</div>
                 )}
-              </div>
+              </Link>
               <div className="flex shrink-0 items-center gap-2">
+                <Link
+                  href={`/admin/clients/${c.id}`}
+                  className={buttonVariants({ variant: 'outline', size: 'sm' })}
+                >
+                  Open
+                </Link>
                 <form
                   action={async () => {
                     'use server'
