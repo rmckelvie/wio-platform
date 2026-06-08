@@ -25,7 +25,8 @@ export async function inviteClient(formData: FormData) {
   // origin of the current request → where Supabase should send the user back to
   const h = await headers()
   const origin = h.get('origin') ?? h.get('referer')?.replace(/\/[^/]*$/, '') ?? ''
-  const redirectTo = origin ? `${origin}/auth/callback?next=/dashboard` : undefined
+  // /auth/confirm uses verifyOtp under the hood (server-side OTP flow used by invites)
+  const redirectTo = origin ? `${origin}/auth/confirm?next=/dashboard` : undefined
 
   const { data, error } = await admin.auth.admin.inviteUserByEmail(email, {
     data: displayName ? { display_name: displayName } : undefined,
