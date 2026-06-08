@@ -99,7 +99,7 @@ export default async function ClientDetailPage({
         </Link>
       </div>
 
-      <section className="space-y-3">
+      <section className="space-y-3" id="assignments">
         <h2 className="text-lg font-medium">Assignments</h2>
         {assignments.length === 0 ? (
           <p className="text-sm text-muted-foreground">
@@ -144,6 +144,31 @@ export default async function ClientDetailPage({
             })}
           </ul>
         )}
+      </section>
+
+      <section className="space-y-3 pt-8">
+        <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
+          Danger zone
+        </h2>
+        <div className="rounded border border-destructive/40 p-4">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <div className="font-medium">Delete this client</div>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Permanently removes the account and all programme data. No undo.
+              </p>
+            </div>
+            <Link
+              href={`/admin/clients/${id}/delete`}
+              className={buttonVariants({
+                variant: 'destructive',
+                size: 'sm',
+              })}
+            >
+              Delete client
+            </Link>
+          </div>
+        </div>
       </section>
     </div>
   )

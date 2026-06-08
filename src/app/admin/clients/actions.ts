@@ -67,3 +67,70 @@ export async function setClientStatus(
 
   revalidatePath('/admin/clients')
 }
+
+/**
+ * HARD DELETE a client and all their data.
+ *
+ * Calls supabase.auth.admin.deleteUser with shouldSoftDelete=false so the row
+ * is fully removed from auth.users (not soft-deleted). Our schema's
+ * ON DELETE CASCADE chain takes care of every dependent row:
+ *
+ *   auth.users
+ *     └── profiles
+ *           ├── clients_admin
+ *           └── client_assignments
+ *                 └── assignment_weeks
+ *                       └── assigned_sessions
+ *                             └── assigned_sections
+ *                                   └── assigned_exercises
+ *                                         └── exercise_logs
+ *
+ * The shared `exercises` library is untouched.
+ *
+ * Safeguards:
+ *   - requireAdmin() blocks non-admins.
+ *   - We refuse to delete a row whose role is NOT 'client' (so this can't
+ *     be turned into a tool for nuking the other trainer's admin row).
+ *   - Caller must pass the client's email as `confirm_email` to confirm.
+ */
+export async function deleteClient(clientId: string, formData: FormData) {
+  await requireAdmin()
+  const supabase = await createClient()
+  const admin = createAdminClient()
+
+  const { data: profile, error: fetchErr } = await supabase
+    .from('profiles')
+    .select('email, role')
+    .eq('id', clientId)
+    .single()
+
+  if (fetchErr || !profile) {
+    redirect(`/admin/clients?error=Client+not+found`)
+  }
+
+  if (profile.role !== 'client') {
+    redirect(`/admin/clients?error=Refusing+to+delete+a+non-client+account`)
+  }
+
+  const confirmation = (formData.get('confirm_email') ?? '')
+    .toString()
+    .trim()
+    .toLowerCase()
+  if (confirmation !== profile.email.toLowerCase()) {
+    redirect(
+      `/admin/clients/${clientId}/delete?error=${encodeURIComponent(
+        'Email confirmation did not match',
+      )}`,
+    )
+  }
+
+  const { error } = await admin.auth.admin.deleteUser(clientId, false)
+  if (error) {
+    redirect(
+      `/admin/clients/${clientId}/delete?error=${encodeURIComponent(error.message)}`,
+    )
+  }
+
+  revalidatePath('/admin/clients')
+  redirect('/admin/clients')
+}
