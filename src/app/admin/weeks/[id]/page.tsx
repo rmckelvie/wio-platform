@@ -16,6 +16,7 @@ import {
 interface ExerciseLibraryRow {
   id: string
   name: string
+  section_types: SectionType[] | null
 }
 
 interface AssignedExercise {
@@ -110,7 +111,7 @@ export default async function WeekPage({
 
   const { data: libraryRows } = await supabase
     .from('exercises')
-    .select('id, name')
+    .select('id, name, section_types')
     .eq('archived', false)
     .order('name', { ascending: true })
 
@@ -312,6 +313,13 @@ function SectionBlock({
   section: AssignedSection
   library: ExerciseLibraryRow[]
 }) {
+  // Show exercises whose tags include this section type, plus untagged
+  // (empty section_types acts as wildcard so legacy rows stay reachable).
+  const filteredLibrary = library.filter((ex) => {
+    const tags = ex.section_types ?? []
+    return tags.length === 0 || tags.includes(section.section_type)
+  })
+
   return (
     <section className="rounded border border-border/60 bg-background p-3">
       <header className="mb-2 flex items-center justify-between">
@@ -401,7 +409,18 @@ function SectionBlock({
       )}
 
       {/* Inline add-exercise form */}
-      {library.length > 0 && (
+      {filteredLibrary.length === 0 ? (
+        <p className="text-xs text-muted-foreground">
+          No exercises in your library are tagged {sectionLabel(section.section_type)}.{' '}
+          <Link
+            href={`/admin/exercises?tag=${section.section_type}`}
+            className="text-brand underline-offset-4 hover:underline"
+          >
+            Tag some
+          </Link>{' '}
+          first.
+        </p>
+      ) : (
         <form
           action={createAssignedExercise.bind(null, section.id)}
           className="flex flex-wrap items-end gap-2"
@@ -417,7 +436,7 @@ function SectionBlock({
               <option value="" disabled>
                 Pick…
               </option>
-              {library.map((ex) => (
+              {filteredLibrary.map((ex) => (
                 <option key={ex.id} value={ex.id}>
                   {ex.name}
                 </option>

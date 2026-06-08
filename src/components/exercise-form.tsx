@@ -1,4 +1,9 @@
 import { Button } from '@/components/ui/button'
+import {
+  SECTION_TYPES,
+  sectionLabel,
+  type SectionType,
+} from '@/lib/sections'
 
 interface ExerciseFormProps {
   action: (formData: FormData) => void | Promise<void>
@@ -6,6 +11,7 @@ interface ExerciseFormProps {
     name?: string
     video_url?: string | null
     default_notes?: string | null
+    section_types?: SectionType[] | null
   }
   submitLabel: string
   error?: string
@@ -20,6 +26,8 @@ export function ExerciseForm({
   submitLabel,
   error,
 }: ExerciseFormProps) {
+  const currentTags = new Set(initial?.section_types ?? [])
+
   return (
     <form action={action} className="flex max-w-xl flex-col gap-4">
       <label className="flex flex-col gap-1">
@@ -33,6 +41,31 @@ export function ExerciseForm({
           className={inputClass}
         />
       </label>
+
+      <fieldset className="flex flex-col gap-2">
+        <legend className="text-sm font-medium">Categories</legend>
+        <p className="text-xs text-muted-foreground">
+          Which section types this exercise can be prescribed in. Leave them
+          all unchecked to make it available in every section.
+        </p>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+          {SECTION_TYPES.map((t) => (
+            <label
+              key={t}
+              className="flex cursor-pointer items-center gap-2 rounded border border-border bg-card px-2 py-1.5 text-sm hover:border-brand/60"
+            >
+              <input
+                type="checkbox"
+                name="section_types"
+                value={t}
+                defaultChecked={currentTags.has(t)}
+                className="accent-brand"
+              />
+              {sectionLabel(t)}
+            </label>
+          ))}
+        </div>
+      </fieldset>
 
       <label className="flex flex-col gap-1">
         <span className="text-sm font-medium">Video URL</span>

@@ -4,10 +4,18 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { requireAdmin } from '@/lib/auth'
+import { isSectionType, type SectionType } from '@/lib/sections'
 
 function emptyToNull(v: FormDataEntryValue | null): string | null {
   const s = (v ?? '').toString().trim()
   return s.length === 0 ? null : s
+}
+
+function parseSectionTypes(formData: FormData): SectionType[] {
+  return formData
+    .getAll('section_types')
+    .map((v) => v.toString())
+    .filter(isSectionType)
 }
 
 export async function createExercise(formData: FormData) {
@@ -21,6 +29,7 @@ export async function createExercise(formData: FormData) {
     name,
     video_url: emptyToNull(formData.get('video_url')),
     default_notes: emptyToNull(formData.get('default_notes')),
+    section_types: parseSectionTypes(formData),
   })
 
   if (error) redirect(`/admin/exercises/new?error=${encodeURIComponent(error.message)}`)
@@ -42,6 +51,7 @@ export async function updateExercise(id: string, formData: FormData) {
       name,
       video_url: emptyToNull(formData.get('video_url')),
       default_notes: emptyToNull(formData.get('default_notes')),
+      section_types: parseSectionTypes(formData),
     })
     .eq('id', id)
 

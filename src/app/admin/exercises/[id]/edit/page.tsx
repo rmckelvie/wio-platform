@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { ExerciseForm } from '@/components/exercise-form'
 import { updateExercise } from '../../actions'
+import type { SectionType } from '@/lib/sections'
 
 export default async function EditExercisePage({
   params,
@@ -17,13 +18,14 @@ export default async function EditExercisePage({
   const supabase = await createClient()
   const { data, error } = await supabase
     .from('exercises')
-    .select('id, name, video_url, default_notes')
+    .select('id, name, video_url, default_notes, section_types')
     .eq('id', id)
     .single()
 
   if (error || !data) notFound()
 
   const updateThis = updateExercise.bind(null, data.id)
+  const sectionTypes = (data.section_types ?? []) as SectionType[]
 
   return (
     <div className="space-y-6">
@@ -42,6 +44,7 @@ export default async function EditExercisePage({
           name: data.name,
           video_url: data.video_url,
           default_notes: data.default_notes,
+          section_types: sectionTypes,
         }}
         submitLabel="Save changes"
         error={errMsg}
