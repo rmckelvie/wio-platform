@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
-import { inviteClient, setClientStatus } from './actions'
+import { setClientStatus } from './actions'
 import { Button, buttonVariants } from '@/components/ui/button'
 
 interface ClientRow {
@@ -10,15 +10,12 @@ interface ClientRow {
   status: 'active' | 'archived' | null
 }
 
-const inputClass =
-  'rounded border border-input bg-card px-3 py-2 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/30'
-
 export default async function ClientsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ show?: string; error?: string }>
+  searchParams: Promise<{ show?: string }>
 }) {
-  const { show, error } = await searchParams
+  const { show } = await searchParams
   const showArchived = show === 'archived'
 
   const supabase = await createClient()
@@ -67,42 +64,22 @@ export default async function ClientsPage({
         <h1 className="text-2xl font-semibold">Clients</h1>
       </div>
 
-      {/* Invite form */}
+      {/* Onboarding instructions (replaces invite form for v1 — self-signup only) */}
       <section className="rounded border border-border bg-card p-4">
-        <h2 className="mb-3 text-sm font-medium">Invite a new client</h2>
-        <form action={inviteClient} className="flex flex-wrap items-end gap-3">
-          <label className="flex min-w-[240px] flex-1 flex-col gap-1">
-            <span className="text-xs uppercase tracking-wide text-muted-foreground">
-              Email
-            </span>
-            <input
-              name="email"
-              type="email"
-              required
-              placeholder="client@example.com"
-              className={inputClass}
-            />
-          </label>
-          <label className="flex min-w-[200px] flex-1 flex-col gap-1">
-            <span className="text-xs uppercase tracking-wide text-muted-foreground">
-              Display name (optional)
-            </span>
-            <input
-              name="display_name"
-              type="text"
-              placeholder="Ruari Souter"
-              className={inputClass}
-            />
-          </label>
-          <Button type="submit">Send invite</Button>
-        </form>
-        {error && (
-          <p className="mt-3 text-sm text-destructive">
-            {decodeURIComponent(error)}
-          </p>
-        )}
+        <h2 className="mb-2 text-sm font-medium">How to onboard a client</h2>
+        <p className="text-sm text-muted-foreground">
+          Send your client the signup link below. Once they create an account
+          they will appear in the list and you can build their programme.
+        </p>
+        <div className="mt-3 flex items-center gap-2 rounded border border-input bg-background px-3 py-2 font-mono text-xs">
+          <span className="text-muted-foreground">/signup</span>
+          <span className="text-foreground/60">
+            (append to your site URL)
+          </span>
+        </div>
         <p className="mt-2 text-xs text-muted-foreground">
-          Sends a magic link. The client signs in by clicking it.
+          Branded invite emails will come later — for now, share the link via
+          whatever channel you already use.
         </p>
       </section>
 
@@ -133,7 +110,7 @@ export default async function ClientsPage({
         <p className="text-sm text-muted-foreground">
           {showArchived
             ? 'No archived clients.'
-            : 'No clients yet — invite one above.'}
+            : 'No clients yet. Once someone signs up they will appear here.'}
         </p>
       ) : (
         <ul className="divide-y divide-border rounded border border-border">
