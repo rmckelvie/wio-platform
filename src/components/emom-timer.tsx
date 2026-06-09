@@ -2,15 +2,22 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { playEndChime } from '@/lib/timer-sound'
+import {
+  scheduleBeeps,
+  restAlarmSpecs,
+  type BeepSpec,
+  type BeepHandle,
+} from '@/lib/timer-sound'
 
 /**
- * Fixed-interval (EMOM-style) work timer. Cycles `totalSets` times,
- * `intervalSeconds` per cycle. Plays a chime at every cycle boundary
- * and at the end of the last cycle.
+ * Fixed-interval (EMOM-style) work timer.
  *
- * Pure client state — does not persist across navigation. Tap Start to
- * begin, Stop to abort.
+ * - On Start (a user gesture), pre-schedules a single beep at each cycle
+ *   boundary plus a 5-beep finish alarm. Audio is queued inside the
+ *   AudioContext from within the gesture, so the chimes play at the right
+ *   moments even without further taps.
+ * - Stop / Reset cancels any pending beeps.
+ * - State does not persist across navigation.
  */
 export function EmomTimer({
   intervalSeconds,
@@ -22,12 +29,12 @@ export function EmomTimer({
   const totalDuration = intervalSeconds * totalSets
   const [startedAt, setStartedAt] = useState<number | null>(null)
   const [elapsedSec, setElapsedSec] = useState(0)
-  const lastSetBoundaryRef = useRef<number>(0)
-  const finishedChimedRef = useRef(false)
+  const alarmHandleRef = useRef<BeepHandle | null>(null)
 
   const running = startedAt !== null && elapsedSec < totalDuration
+  const finished = startedAt !== null && elapsedSec >= totalDuration
 
-  // Tick driver — stops as soon as we reach totalDuration
+  // Visual tick driver — stops at totalDuration.
   useEffect(() => {
     if (!running || startedAt === null) return
     let cancelled = false
@@ -48,35 +55,42 @@ export function EmomTimer({
     }
   }, [running, startedAt, totalDuration])
 
-  // Boundary chimes — once per new set, once at finish
-  const currentSetIndex = Math.min(
-    totalSets - 1,
-    Math.floor(elapsedSec / intervalSeconds),
-  )
-  const currentSet = currentSetIndex + 1
-  const finished = startedAt !== null && elapsedSec >= totalDuration
-
+  // Cancel any audio on unmount
   useEffect(() => {
-    if (startedAt === null) {
-      lastSetBoundaryRef.current = 0
-      finishedChimedRef.current = false
-      return
+    return () => {
+      alarmHandleRef.current?.cancel()
+      alarmHandleRef.current = null
     }
-    if (
-      currentSet !== lastSetBoundaryRef.current &&
-      lastSetBoundaryRef.current !== 0
-    ) {
-      playEndChime()
-    }
-    lastSetBoundaryRef.current = currentSet
-  }, [currentSet, startedAt])
+  }, [])
 
-  useEffect(() => {
-    if (finished && !finishedChimedRef.current) {
-      finishedChimedRef.current = true
-      playEndChime()
+  function start() {
+    // Build a single batch of beeps:
+    //  - one chime at the end of sets 1..N-1 (boundary into the next set)
+    //  - 5-beep alarm at the end of the final set
+    const beeps: BeepSpec[] = []
+    for (let i = 1; i < totalSets; i++) {
+      beeps.push({
+        offsetSeconds: i * intervalSeconds,
+        freq: 1320,
+        duration: 0.18,
+        volume: 0.28,
+      })
     }
-  }, [finished])
+    beeps.push(...restAlarmSpecs(totalSets * intervalSeconds))
+
+    alarmHandleRef.current?.cancel()
+    alarmHandleRef.current = scheduleBeeps(beeps)
+
+    setElapsedSec(0)
+    setStartedAt(Date.now())
+  }
+
+  function reset() {
+    alarmHandleRef.current?.cancel()
+    alarmHandleRef.current = null
+    setStartedAt(null)
+    setElapsedSec(0)
+  }
 
   if (startedAt === null) {
     return (
@@ -85,10 +99,7 @@ export function EmomTimer({
         variant="outline"
         size="lg"
         className="mb-3 w-full"
-        onClick={() => {
-          setElapsedSec(0)
-          setStartedAt(Date.now())
-        }}
+        onClick={start}
       >
         Start EMOM · {intervalSeconds}s × {totalSets} sets
       </Button>
@@ -109,10 +120,7 @@ export function EmomTimer({
           variant="ghost"
           size="sm"
           className="mt-2"
-          onClick={() => {
-            setStartedAt(null)
-            setElapsedSec(0)
-          }}
+          onClick={reset}
         >
           Reset
         </Button>
@@ -120,6 +128,11 @@ export function EmomTimer({
     )
   }
 
+  const currentSetIndex = Math.min(
+    totalSets - 1,
+    Math.floor(elapsedSec / intervalSeconds),
+  )
+  const currentSet = currentSetIndex + 1
   const secInSet = elapsedSec - currentSetIndex * intervalSeconds
   const remainInSet = Math.max(0, intervalSeconds - secInSet)
   const mins = Math.floor(remainInSet / 60)
@@ -135,15 +148,7 @@ export function EmomTimer({
         <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-brand">
           EMOM · set {currentSet} / {totalSets}
         </p>
-        <Button
-          type="button"
-          variant="ghost"
-          size="xs"
-          onClick={() => {
-            setStartedAt(null)
-            setElapsedSec(0)
-          }}
-        >
+        <Button type="button" variant="ghost" size="xs" onClick={reset}>
           Stop
         </Button>
       </div>

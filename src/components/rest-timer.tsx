@@ -1,15 +1,22 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { playEndChime } from '@/lib/timer-sound'
+import { scheduleBeeps, restAlarmSpecs } from '@/lib/timer-sound'
 
 /**
  * Countdown rest timer.
  *
- * Receives the duration (seconds) plus the timestamp at which it started
- * (typically the last logged set's `logged_at`). Computes remaining time
- * client-side so navigation away and back resumes correctly.
+ * - Uses the most-recent log's timestamp as the start anchor, so navigation
+ *   away and back resumes at the correct point.
+ * - PRE-SCHEDULES the end-of-rest alarm into the AudioContext as soon as
+ *   it mounts (which is right after the user's "Log set" tap). The alarm
+ *   then plays at the right time without further interaction.
+ * - If the timer is already finished when this component mounts (e.g. the
+ *   client revisited the page after rest had ended), no alarm is scheduled
+ *   — so no rogue chimes on navigation.
+ * - The alarm is 5 short beeps over ~4 seconds, then silence. Skip /
+ *   Dismiss cancels any pending beeps.
  */
 export function RestTimer({
   totalSeconds,
@@ -18,15 +25,25 @@ export function RestTimer({
   totalSeconds: number
   startedAtIso: string
 }) {
-  const initialRemaining = computeRemaining(totalSeconds, startedAtIso)
-  const [remaining, setRemaining] = useState(initialRemaining)
+  const [remaining, setRemaining] = useState(() =>
+    computeRemaining(totalSeconds, startedAtIso),
+  )
   const [dismissed, setDismissed] = useState(false)
-  const chimedRef = useRef(false)
   const finished = remaining <= 0
 
+  // Pre-schedule the alarm at mount. If the timer is already past zero
+  // (= a revisit after a long absence) skip — we do NOT want a chime here.
+  useEffect(() => {
+    const offsetMs =
+      new Date(startedAtIso).getTime() + totalSeconds * 1000 - Date.now()
+    if (offsetMs <= 0) return
+    const handle = scheduleBeeps(restAlarmSpecs(offsetMs / 1000))
+    return () => handle.cancel()
+  }, [totalSeconds, startedAtIso])
+
+  // Tick driver for the visual countdown — stops the moment we cross zero.
   useEffect(() => {
     if (dismissed || finished) return
-
     let cancelled = false
     const id = setInterval(() => {
       if (cancelled) return
@@ -39,27 +56,21 @@ export function RestTimer({
         setRemaining(next)
       }
     }, 250)
-
     return () => {
       cancelled = true
       clearInterval(id)
     }
   }, [dismissed, finished, totalSeconds, startedAtIso])
 
-  // Chime once when we cross zero
-  useEffect(() => {
-    if (finished && !chimedRef.current) {
-      chimedRef.current = true
-      playEndChime()
-    }
-  }, [finished])
-
   if (dismissed) return null
 
   const display = formatMmSs(Math.max(0, remaining))
   const progress = Math.max(
     0,
-    Math.min(100, ((totalSeconds - Math.max(0, remaining)) / totalSeconds) * 100),
+    Math.min(
+      100,
+      ((totalSeconds - Math.max(0, remaining)) / totalSeconds) * 100,
+    ),
   )
 
   return (
