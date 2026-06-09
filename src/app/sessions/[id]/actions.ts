@@ -111,3 +111,21 @@ export async function toggleSessionComplete(
   revalidatePath(`/sessions/${sessionId}`)
   revalidatePath('/dashboard')
 }
+
+/**
+ * Save / clear the client's free-text reflections on a session. Same
+ * RLS gate as toggleSessionComplete (assigned_sessions_client_update).
+ */
+export async function saveSessionNotes(
+  sessionId: string,
+  formData: FormData,
+) {
+  const supabase = await createClient()
+  const raw = (formData.get('client_notes') ?? '').toString()
+  const trimmed = raw.trim()
+  await supabase
+    .from('assigned_sessions')
+    .update({ client_notes: trimmed.length === 0 ? null : trimmed })
+    .eq('id', sessionId)
+  revalidatePath(`/sessions/${sessionId}`)
+}

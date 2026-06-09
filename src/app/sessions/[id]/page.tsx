@@ -6,7 +6,12 @@ import { Button } from '@/components/ui/button'
 import { WioLogo } from '@/components/wio-logo'
 import { sectionLabel, type SectionType } from '@/lib/sections'
 import { parseMaxSets } from '@/lib/prescription'
-import { logSet, deleteLog, toggleSessionComplete } from './actions'
+import {
+  logSet,
+  deleteLog,
+  toggleSessionComplete,
+  saveSessionNotes,
+} from './actions'
 import { RestTimer } from '@/components/rest-timer'
 import { EmomTimer } from '@/components/emom-timer'
 
@@ -49,6 +54,7 @@ interface SessionData {
   session_index: number
   name: string
   completed_at: string | null
+  client_notes: string | null
   assignment_weeks: {
     week_index: number
     name: string | null
@@ -107,7 +113,7 @@ export default async function SessionPage({
     .from('assigned_sessions')
     .select(
       `
-      id, session_index, name, completed_at,
+      id, session_index, name, completed_at, client_notes,
       assignment_weeks!inner (
         week_index, name,
         client_assignments!inner ( id, name, weeks )
@@ -312,6 +318,7 @@ export default async function SessionPage({
                 completedAt={session.completed_at}
                 exerciseCount={flat.length}
                 totalSets={totalSets}
+                clientNotes={session.client_notes}
                 prevAnchor={
                   flat.length > 0 ? `#ex-${flat[flat.length - 1].ex.id}` : null
                 }
@@ -586,6 +593,7 @@ function SummaryCard({
   completedAt,
   exerciseCount,
   totalSets,
+  clientNotes,
   prevAnchor,
 }: {
   sessionId: string
@@ -594,8 +602,10 @@ function SummaryCard({
   completedAt: string | null
   exerciseCount: number
   totalSets: number
+  clientNotes: string | null
   prevAnchor: string | null
 }) {
+  const saveNotesBound = saveSessionNotes.bind(null, sessionId)
   return (
     <article className="rounded-xl border border-border bg-card p-4">
       <header className="mb-3 flex items-baseline justify-between gap-2">
@@ -620,6 +630,29 @@ function SummaryCard({
           })}
         </p>
       )}
+
+      <form action={saveNotesBound} className="mt-5 space-y-2">
+        <label className="block">
+          <span className="text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground">
+            How did it go?
+          </span>
+          <textarea
+            name="client_notes"
+            rows={3}
+            defaultValue={clientNotes ?? ''}
+            placeholder="Anything you want to remember — felt strong, low energy, dodgy shoulder..."
+            className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-3 text-base outline-none focus:border-brand focus:ring-2 focus:ring-brand/30"
+          />
+        </label>
+        <Button
+          type="submit"
+          variant="outline"
+          size="sm"
+          className="w-full"
+        >
+          Save reflection
+        </Button>
+      </form>
 
       <div className="mt-5">
         <form

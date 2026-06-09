@@ -57,6 +57,7 @@ interface AssignedSession {
   id: string
   session_index: number
   name: string
+  client_notes: string | null
   assigned_sections: AssignedSection[]
 }
 
@@ -101,7 +102,7 @@ export default async function WeekPage({
         profiles ( email, display_name )
       ),
       assigned_sessions (
-        id, session_index, name,
+        id, session_index, name, client_notes,
         assigned_sections (
           id, order_index, section_type,
           assigned_exercises (
@@ -437,6 +438,17 @@ function SessionCard({
           </form>
         </div>
       </header>
+
+      {session.client_notes && (
+        <blockquote className="mb-4 rounded-md border-l-2 border-brand bg-background px-3 py-2 text-sm">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
+            Client reflection
+          </p>
+          <p className="mt-1 whitespace-pre-wrap text-foreground">
+            {session.client_notes}
+          </p>
+        </blockquote>
+      )}
 
       <div className="space-y-4">
         {session.assigned_sections.map((section, i) => (
