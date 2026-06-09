@@ -15,6 +15,7 @@ import {
   moveSection,
   moveAssignedExercise,
   copyWeekContents,
+  propagateToLaterWeeks,
 } from './actions'
 
 interface ExerciseLibraryRow {
@@ -55,6 +56,7 @@ interface WeekRow {
   client_assignments: {
     id: string
     name: string
+    weeks: number
     client_id: string
     profiles: { email: string; display_name: string | null } | null
   } | null
@@ -69,10 +71,10 @@ export default async function WeekPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>
-  searchParams: Promise<{ error?: string }>
+  searchParams: Promise<{ error?: string; msg?: string }>
 }) {
   const { id: weekId } = await params
-  const { error: errMsg } = await searchParams
+  const { error: errMsg, msg: infoMsg } = await searchParams
 
   const supabase = await createClient()
 
@@ -82,7 +84,7 @@ export default async function WeekPage({
       `
       id, week_index, name, release_date, assignment_id,
       client_assignments!inner (
-        id, name, client_id,
+        id, name, weeks, client_id,
         profiles ( email, display_name )
       ),
       assigned_sessions (
@@ -204,6 +206,12 @@ export default async function WeekPage({
         </p>
       )}
 
+      {infoMsg && (
+        <p className="rounded border border-brand/40 bg-brand/10 p-3 text-sm text-brand">
+          {decodeURIComponent(infoMsg)}
+        </p>
+      )}
+
       {library.length === 0 && (
         <p className="rounded border border-border bg-card p-4 text-sm">
           Your exercise library is empty. Add some on{' '}
@@ -214,41 +222,65 @@ export default async function WeekPage({
         </p>
       )}
 
-      {/* Copy from another week */}
-      {copySources.length > 0 && (
-        <form
-          action={copyWeekContents.bind(null, week.id)}
-          className="flex flex-wrap items-end gap-2 rounded border border-border bg-card/50 p-3"
-        >
-          <label className="flex min-w-[260px] flex-1 flex-col gap-1">
-            <span className="text-xs uppercase tracking-wide text-muted-foreground">
-              Copy from another week
-            </span>
-            <select
-              name="source_week_id"
-              required
-              defaultValue=""
-              className={inputClass}
+      {/* Bulk-copy actions */}
+      {(copySources.length > 0 || week.assigned_sessions.length > 0) && (
+        <div className="space-y-3 rounded border border-border bg-card/50 p-3">
+          {copySources.length > 0 && (
+            <form
+              action={copyWeekContents.bind(null, week.id)}
+              className="flex flex-wrap items-end gap-2"
             >
-              <option value="" disabled>
-                Pick a source week…
-              </option>
-              {copySources.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <Button type="submit" size="sm" variant="outline">
-            Append copy
-          </Button>
-          <p className="w-full text-xs text-muted-foreground">
-            Appends a snapshot of the source week&apos;s sessions, sections, and
-            prescriptions below whatever&apos;s already here. Edits afterwards
-            don&apos;t affect the source.
-          </p>
-        </form>
+              <label className="flex min-w-[260px] flex-1 flex-col gap-1">
+                <span className="text-xs uppercase tracking-wide text-muted-foreground">
+                  Copy from another week
+                </span>
+                <select
+                  name="source_week_id"
+                  required
+                  defaultValue=""
+                  className={inputClass}
+                >
+                  <option value="" disabled>
+                    Pick a source week…
+                  </option>
+                  {copySources.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <Button type="submit" size="sm" variant="outline">
+                Append copy
+              </Button>
+              <p className="w-full text-xs text-muted-foreground">
+                Appends a snapshot of the source week&apos;s content below
+                whatever&apos;s already here. Edits afterwards don&apos;t
+                affect the source.
+              </p>
+            </form>
+          )}
+
+          {week.assigned_sessions.length > 0 &&
+            assignment.weeks > week.week_index && (
+              <form
+                action={async () => {
+                  'use server'
+                  await propagateToLaterWeeks(week.id)
+                }}
+                className="flex flex-wrap items-center gap-2 border-t border-border pt-3"
+              >
+                <Button type="submit" size="sm" variant="outline">
+                  Apply this week to all later weeks
+                </Button>
+                <p className="text-xs text-muted-foreground">
+                  Copies into every later week of this block that is currently
+                  empty. Non-empty weeks are skipped. Useful for "author Week 1,
+                  then progress sets/reps in each subsequent week."
+                </p>
+              </form>
+            )}
+        </div>
       )}
 
       {/* Sessions */}

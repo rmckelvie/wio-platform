@@ -692,3 +692,143 @@ export async function copyWeekContents(
   revalidatePath(`/admin/weeks/${targetWeekId}`)
   redirect(`/admin/weeks/${targetWeekId}`)
 }
+
+/**
+ * Populate every later week of the same assignment with a copy of this week's
+ * content. Only weeks that are currently empty (no sessions) are touched —
+ * non-empty weeks are skipped to avoid clobbering work. Designed for the
+ * common "author Week 1, propagate to weeks 2..N, then progress sets/reps"
+ * workflow.
+ */
+export async function propagateToLaterWeeks(sourceWeekId: string) {
+  await requireAdmin()
+  const supabase = await createClient()
+
+  const { data: source } = await supabase
+    .from('assignment_weeks')
+    .select('id, assignment_id, week_index')
+    .eq('id', sourceWeekId)
+    .single()
+
+  if (!source) {
+    redirect(`/admin/weeks/${sourceWeekId}?error=Source+week+not+found`)
+  }
+
+  const { data: srcContent } = await supabase
+    .from('assignment_weeks')
+    .select(
+      `
+      id,
+      assigned_sessions (
+        session_index, name,
+        assigned_sections (
+          order_index, section_type,
+          assigned_exercises (
+            order_index, exercise_id, prescribed_sets, prescribed_reps, notes
+          )
+        )
+      )
+    `,
+    )
+    .eq('id', sourceWeekId)
+    .single()
+
+  type Ex = {
+    order_index: number
+    exercise_id: string
+    prescribed_sets: string | null
+    prescribed_reps: string | null
+    notes: string | null
+  }
+  type Sec = {
+    order_index: number
+    section_type: SectionType
+    assigned_exercises: Ex[]
+  }
+  type Ses = {
+    session_index: number
+    name: string
+    assigned_sections: Sec[]
+  }
+
+  const sourceSessions = ((srcContent as { assigned_sessions: Ses[] | null })
+    ?.assigned_sessions ?? []) as Ses[]
+
+  if (sourceSessions.length === 0) {
+    redirect(`/admin/weeks/${sourceWeekId}?error=This+week+has+no+content+to+propagate`)
+  }
+
+  // Sort sessions so the inserted copies keep the same order
+  sourceSessions.sort((a, b) => a.session_index - b.session_index)
+
+  const { data: laterWeeks } = await supabase
+    .from('assignment_weeks')
+    .select('id, week_index, assigned_sessions ( id )')
+    .eq('assignment_id', source.assignment_id)
+    .gt('week_index', source.week_index)
+    .order('week_index', { ascending: true })
+
+  let populated = 0
+  let skipped = 0
+
+  for (const wk of laterWeeks ?? []) {
+    const hasContent = (wk.assigned_sessions ?? []).length > 0
+    if (hasContent) {
+      skipped++
+      continue
+    }
+
+    for (let i = 0; i < sourceSessions.length; i++) {
+      const ss = sourceSessions[i]
+      const { data: newSession } = await supabase
+        .from('assigned_sessions')
+        .insert({
+          assignment_week_id: wk.id,
+          session_index: i + 1,
+          name: ss.name,
+        })
+        .select('id')
+        .single()
+
+      if (!newSession) continue
+
+      for (const sec of ss.assigned_sections ?? []) {
+        const { data: newSection } = await supabase
+          .from('assigned_sections')
+          .insert({
+            assigned_session_id: newSession.id,
+            order_index: sec.order_index,
+            section_type: sec.section_type,
+          })
+          .select('id')
+          .single()
+
+        if (!newSection) continue
+
+        const rows = (sec.assigned_exercises ?? []).map((e) => ({
+          assigned_section_id: newSection.id,
+          order_index: e.order_index,
+          exercise_id: e.exercise_id,
+          prescribed_sets: e.prescribed_sets,
+          prescribed_reps: e.prescribed_reps,
+          notes: e.notes,
+        }))
+        if (rows.length > 0) {
+          await supabase.from('assigned_exercises').insert(rows)
+        }
+      }
+    }
+    populated++
+  }
+
+  const parts: string[] = []
+  parts.push(`Populated ${populated} week${populated === 1 ? '' : 's'}`)
+  if (skipped > 0) {
+    parts.push(`skipped ${skipped} non-empty week${skipped === 1 ? '' : 's'}`)
+  }
+
+  revalidatePath(`/admin/weeks/${sourceWeekId}`)
+  redirect(
+    `/admin/weeks/${sourceWeekId}?msg=${encodeURIComponent(parts.join('; '))}`,
+  )
+}
