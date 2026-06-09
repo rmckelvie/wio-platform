@@ -192,6 +192,10 @@ export async function createAssignedExercise(
   const prescribed_sets = emptyToNull(formData.get('prescribed_sets'))
   const prescribed_reps = emptyToNull(formData.get('prescribed_reps'))
   const notes = emptyToNull(formData.get('notes'))
+  const rest_seconds = parsePositiveInt(formData.get('rest_seconds'))
+  const work_interval_seconds = parsePositiveInt(
+    formData.get('work_interval_seconds'),
+  )
 
   if (!exercise_id) {
     // Need the parent week to bounce back nicely
@@ -231,6 +235,8 @@ export async function createAssignedExercise(
     prescribed_sets,
     prescribed_reps,
     notes,
+    rest_seconds,
+    work_interval_seconds,
   })
 
   const { data: section } = await supabase

@@ -766,6 +766,32 @@ function SectionBlock({
               className={inputClass}
             />
           </label>
+          <label className="flex w-20 flex-col gap-1">
+            <span className="text-xs text-muted-foreground">Rest (s)</span>
+            <input
+              name="rest_seconds"
+              type="number"
+              inputMode="numeric"
+              min={0}
+              max={7200}
+              step={5}
+              placeholder="—"
+              className={inputClass}
+            />
+          </label>
+          <label className="flex w-20 flex-col gap-1">
+            <span className="text-xs text-muted-foreground">EMOM (s)</span>
+            <input
+              name="work_interval_seconds"
+              type="number"
+              inputMode="numeric"
+              min={5}
+              max={7200}
+              step={5}
+              placeholder="—"
+              className={inputClass}
+            />
+          </label>
           <label className="flex min-w-[140px] flex-1 flex-col gap-1">
             <span className="text-xs text-muted-foreground">Notes</span>
             <input
