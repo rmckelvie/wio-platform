@@ -69,6 +69,29 @@ export async function setClientStatus(
 }
 
 /**
+ * Set or clear the client's display_name. RLS allows admin to update any
+ * profile (profiles_admin_update policy).
+ */
+export async function updateClientDisplayName(
+  clientId: string,
+  formData: FormData,
+) {
+  await requireAdmin()
+  const supabase = await createClient()
+
+  const raw = (formData.get('display_name') ?? '').toString().trim()
+  const next = raw.length === 0 ? null : raw
+
+  await supabase
+    .from('profiles')
+    .update({ display_name: next })
+    .eq('id', clientId)
+
+  revalidatePath('/admin/clients')
+  revalidatePath(`/admin/clients/${clientId}`)
+}
+
+/**
  * HARD DELETE a client and all their data.
  *
  * Calls supabase.auth.admin.deleteUser with shouldSoftDelete=false so the row

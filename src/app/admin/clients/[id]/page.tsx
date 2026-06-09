@@ -1,11 +1,12 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { buttonVariants } from '@/components/ui/button'
+import { Button, buttonVariants } from '@/components/ui/button'
 import {
   StatusBadge,
   ASSIGNMENT_STATUS_TONE,
 } from '@/components/status-badge'
+import { updateClientDisplayName } from '../actions'
 
 interface Assignment {
   id: string
@@ -78,7 +79,7 @@ export default async function ClientDetailPage({
       </div>
 
       <div className="flex items-start justify-between gap-4">
-        <div>
+        <div className="min-w-0 flex-1">
           <h1 className="text-2xl font-semibold">
             {profile.display_name || profile.email}
           </h1>
@@ -90,6 +91,30 @@ export default async function ClientDetailPage({
               {clientStatus}
             </StatusBadge>
           </div>
+
+          <form
+            action={updateClientDisplayName.bind(null, id)}
+            className="mt-4 flex flex-wrap items-end gap-2"
+          >
+            <label className="flex min-w-[220px] flex-col gap-1">
+              <span className="text-xs uppercase tracking-wide text-muted-foreground">
+                Display name
+              </span>
+              <input
+                name="display_name"
+                type="text"
+                defaultValue={profile.display_name ?? ''}
+                placeholder="e.g. Ruari Souter"
+                className="rounded border border-input bg-card px-3 py-2 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/30"
+              />
+            </label>
+            <Button type="submit" variant="outline" size="sm">
+              Save name
+            </Button>
+            <p className="w-full text-xs text-muted-foreground">
+              Shown to you in lists. The client can&apos;t see it.
+            </p>
+          </form>
         </div>
         <Link
           href={`/admin/clients/${id}/assignments/new`}

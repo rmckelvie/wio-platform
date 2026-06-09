@@ -15,7 +15,7 @@ export default function AdminHome() {
           <Link href="/admin/clients" className="underline">
             Clients
           </Link>{' '}
-          — invite and manage clients. (coming next)
+          — manage clients, set display names, build programmes.
         </li>
       </ul>
     </div>
