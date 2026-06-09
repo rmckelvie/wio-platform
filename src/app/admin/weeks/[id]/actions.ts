@@ -11,6 +11,13 @@ function emptyToNull(v: FormDataEntryValue | null): string | null {
   return s.length === 0 ? null : s
 }
 
+function parsePositiveInt(v: FormDataEntryValue | null): number | null {
+  const s = (v ?? '').toString().trim()
+  if (s.length === 0) return null
+  const n = Number.parseInt(s, 10)
+  return Number.isFinite(n) && n >= 0 ? n : null
+}
+
 // =============================================================================
 // SESSIONS
 // =============================================================================
@@ -297,9 +304,20 @@ export async function updateAssignedExercise(
     : sectionParent?.assigned_sessions
   const weekId = sessionParent?.assignment_week_id
 
+  const rest_seconds = parsePositiveInt(formData.get('rest_seconds'))
+  const work_interval_seconds = parsePositiveInt(
+    formData.get('work_interval_seconds'),
+  )
+
   const { error } = await supabase
     .from('assigned_exercises')
-    .update({ prescribed_sets, prescribed_reps, notes })
+    .update({
+      prescribed_sets,
+      prescribed_reps,
+      notes,
+      rest_seconds,
+      work_interval_seconds,
+    })
     .eq('id', id)
 
   if (error) {

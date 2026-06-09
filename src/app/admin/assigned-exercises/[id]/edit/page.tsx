@@ -12,6 +12,8 @@ interface AssignedExerciseRow {
   prescribed_sets: string | null
   prescribed_reps: string | null
   notes: string | null
+  rest_seconds: number | null
+  work_interval_seconds: number | null
   exercises: { name: string; video_url: string | null } | null
   assigned_sections:
     | {
@@ -47,6 +49,7 @@ export default async function EditAssignedExercisePage({
     .select(
       `
       id, prescribed_sets, prescribed_reps, notes,
+      rest_seconds, work_interval_seconds,
       exercises ( name, video_url ),
       assigned_sections!inner (
         section_type,
@@ -125,6 +128,50 @@ export default async function EditAssignedExercisePage({
             className={inputClass}
           />
         </label>
+
+        <fieldset className="rounded border border-border bg-card/40 p-3">
+          <legend className="px-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            Timing (optional)
+          </legend>
+          <div className="grid grid-cols-2 gap-4">
+            <label className="flex flex-col gap-1">
+              <span className="text-sm font-medium">Rest after set (s)</span>
+              <input
+                name="rest_seconds"
+                type="number"
+                inputMode="numeric"
+                min={0}
+                max={7200}
+                step={5}
+                defaultValue={ae.rest_seconds ?? ''}
+                placeholder="e.g. 90"
+                className={inputClass}
+              />
+              <span className="text-xs text-muted-foreground">
+                Starts a countdown timer for the client after each set is
+                logged. Leave blank for no auto-timer.
+              </span>
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-sm font-medium">EMOM interval (s)</span>
+              <input
+                name="work_interval_seconds"
+                type="number"
+                inputMode="numeric"
+                min={5}
+                max={7200}
+                step={5}
+                defaultValue={ae.work_interval_seconds ?? ''}
+                placeholder="e.g. 60"
+                className={inputClass}
+              />
+              <span className="text-xs text-muted-foreground">
+                Every-minute-on-the-minute style. Each set must be completed
+                within this many seconds. Number of cycles = prescribed sets.
+              </span>
+            </label>
+          </div>
+        </fieldset>
 
         {error && (
           <p className="text-sm text-destructive">{decodeURIComponent(error)}</p>

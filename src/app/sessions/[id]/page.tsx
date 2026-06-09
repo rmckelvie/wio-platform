@@ -7,6 +7,8 @@ import { WioLogo } from '@/components/wio-logo'
 import { sectionLabel, type SectionType } from '@/lib/sections'
 import { parseMaxSets } from '@/lib/prescription'
 import { logSet, deleteLog, toggleSessionComplete } from './actions'
+import { RestTimer } from '@/components/rest-timer'
+import { EmomTimer } from '@/components/emom-timer'
 
 interface ExerciseLog {
   id: string
@@ -24,6 +26,8 @@ interface AssignedExercise {
   prescribed_sets: string | null
   prescribed_reps: string | null
   notes: string | null
+  rest_seconds: number | null
+  work_interval_seconds: number | null
   exercises: {
     id: string
     name: string
@@ -112,6 +116,7 @@ export default async function SessionPage({
         id, order_index, section_type,
         assigned_exercises (
           id, order_index, prescribed_sets, prescribed_reps, notes,
+          rest_seconds, work_interval_seconds,
           exercises ( id, name, video_url, default_notes ),
           exercise_logs (
             id, set_number, weight_kg, reps_done, rpe, notes, logged_at
@@ -355,6 +360,13 @@ function ExerciseCard({
 
   const logSetBound = logSet.bind(null, ex.id, sessionId)
 
+  const lastLog = ex.exercise_logs[ex.exercise_logs.length - 1]
+  const hasEmom = !!ex.work_interval_seconds && ex.work_interval_seconds > 0
+  const restSecs = !hasEmom && ex.rest_seconds ? ex.rest_seconds : 0
+  const emomSets = hasEmom
+    ? maxSets ?? Math.max(1, loggedCount + 1)
+    : 0
+
   return (
     <article className="rounded-xl border border-border bg-card p-4">
       <header className="mb-3 flex items-baseline justify-between gap-2">
@@ -387,6 +399,21 @@ function ExerciseCard({
           </a>
         )}
       </div>
+
+      {/* Timers */}
+      {hasEmom && (
+        <EmomTimer
+          intervalSeconds={ex.work_interval_seconds!}
+          totalSets={emomSets}
+        />
+      )}
+      {!hasEmom && restSecs > 0 && lastLog && (
+        <RestTimer
+          key={lastLog.id}
+          totalSeconds={restSecs}
+          startedAtIso={lastLog.logged_at}
+        />
+      )}
 
       {lastSession && (
         <div className="mb-3 rounded-lg border border-border bg-background p-3">

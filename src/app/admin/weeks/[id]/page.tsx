@@ -40,6 +40,8 @@ interface AssignedExercise {
   prescribed_sets: string | null
   prescribed_reps: string | null
   notes: string | null
+  rest_seconds: number | null
+  work_interval_seconds: number | null
   exercises: { id: string; name: string; video_url: string | null } | null
   exercise_logs: ExerciseLog[]
 }
@@ -104,6 +106,7 @@ export default async function WeekPage({
           id, order_index, section_type,
           assigned_exercises (
             id, order_index, prescribed_sets, prescribed_reps, notes,
+            rest_seconds, work_interval_seconds,
             exercises ( id, name, video_url ),
             exercise_logs (
               id, set_number, weight_kg, reps_done, rpe, logged_at
@@ -608,8 +611,20 @@ function SectionBlock({
                     </form>
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="font-medium">
-                      {ae.exercises?.name ?? '(deleted exercise)'}
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">
+                        {ae.exercises?.name ?? '(deleted exercise)'}
+                      </span>
+                      {ae.work_interval_seconds && (
+                        <span className="rounded-full border border-brand/40 bg-brand/15 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-brand">
+                          EMOM {ae.work_interval_seconds}s
+                        </span>
+                      )}
+                      {!ae.work_interval_seconds && ae.rest_seconds !== null && (
+                        <span className="rounded-full border border-border bg-secondary px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                          rest {ae.rest_seconds}s
+                        </span>
+                      )}
                     </div>
                     {ae.notes && (
                       <div className="text-xs text-muted-foreground">
