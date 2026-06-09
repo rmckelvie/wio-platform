@@ -4,6 +4,10 @@ import { createClient } from '@/lib/supabase/server'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { formatDate, addDays } from '@/lib/dates'
 import { setAssignmentStatus } from './actions'
+import {
+  StatusBadge,
+  ASSIGNMENT_STATUS_TONE,
+} from '@/components/status-badge'
 
 interface Assignment {
   id: string
@@ -71,12 +75,6 @@ export default async function AssignmentDetailPage({
   const endDate = addDays(a.start_date, a.weeks * 7 - 1)
   const today = new Date().toISOString().slice(0, 10)
 
-  const statusBadge = {
-    active: 'bg-brand/15 text-brand',
-    completed: 'bg-muted text-muted-foreground',
-    paused: 'bg-secondary text-secondary-foreground',
-  }[a.status]
-
   return (
     <div className="space-y-8">
       <div className="text-sm">
@@ -92,11 +90,9 @@ export default async function AssignmentDetailPage({
         <div>
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-semibold">{a.name}</h1>
-            <span
-              className={`rounded px-2 py-0.5 text-xs font-medium uppercase ${statusBadge}`}
-            >
+            <StatusBadge tone={ASSIGNMENT_STATUS_TONE[a.status]}>
               {a.status}
-            </span>
+            </StatusBadge>
           </div>
           <p className="mt-1 text-sm text-muted-foreground">
             {formatDate(a.start_date)} → {formatDate(endDate)} · {a.weeks} weeks
@@ -178,7 +174,7 @@ export default async function AssignmentDetailPage({
                 >
                   <Link
                     href={`/admin/weeks/${w.id}`}
-                    className="min-w-0 flex-1 hover:opacity-80"
+                    className="min-w-0 flex-1 transition-opacity hover:opacity-80"
                   >
                     <div className="flex items-center gap-2">
                       <span className="font-medium">
@@ -186,9 +182,9 @@ export default async function AssignmentDetailPage({
                         {w.name ? ` — ${w.name}` : ''}
                       </span>
                       {!released && (
-                        <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                        <StatusBadge tone="neutral">
                           unlocks {formatDate(w.release_date)}
-                        </span>
+                        </StatusBadge>
                       )}
                     </div>
                     <div className="text-xs text-muted-foreground">

@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { requireAdmin } from '@/lib/auth'
 import { WioLogo } from '@/components/wio-logo'
+import { AdminNavLink } from '@/components/admin-nav-link'
 
 export default async function AdminLayout({
   children,
@@ -13,26 +14,18 @@ export default async function AdminLayout({
     <div className="min-h-screen">
       <header className="border-b border-border bg-sidebar">
         <nav className="mx-auto flex max-w-5xl items-center justify-between gap-6 px-6 py-3">
-          <div className="flex items-center gap-6">
+          <div className="flex items-center gap-4">
             <Link
               href="/admin"
-              className="flex items-center gap-2 text-sm font-semibold"
+              className="flex items-center gap-2 text-sm font-semibold transition-opacity hover:opacity-80"
             >
               <WioLogo variant="mark" size={28} />
               <span className="hidden sm:inline">WIO admin</span>
             </Link>
-            <Link
-              href="/admin/exercises"
-              className="text-sm text-muted-foreground transition-colors hover:text-foreground"
-            >
-              Exercises
-            </Link>
-            <Link
-              href="/admin/clients"
-              className="text-sm text-muted-foreground transition-colors hover:text-foreground"
-            >
-              Clients
-            </Link>
+            <div className="flex items-center gap-1">
+              <AdminNavLink href="/admin/exercises">Exercises</AdminNavLink>
+              <AdminNavLink href="/admin/clients">Clients</AdminNavLink>
+            </div>
           </div>
           <div className="text-xs text-muted-foreground">{me.email}</div>
         </nav>

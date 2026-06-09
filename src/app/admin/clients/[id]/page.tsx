@@ -2,6 +2,10 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { buttonVariants } from '@/components/ui/button'
+import {
+  StatusBadge,
+  ASSIGNMENT_STATUS_TONE,
+} from '@/components/status-badge'
 
 interface Assignment {
   id: string
@@ -23,12 +27,6 @@ function fmt(d: string) {
     month: 'short',
     year: 'numeric',
   })
-}
-
-const statusBadge: Record<Assignment['status'], string> = {
-  active: 'bg-brand/15 text-brand',
-  completed: 'bg-muted text-muted-foreground',
-  paused: 'bg-secondary text-secondary-foreground',
 }
 
 export default async function ClientDetailPage({
@@ -87,9 +85,11 @@ export default async function ClientDetailPage({
           {profile.display_name && (
             <p className="text-sm text-muted-foreground">{profile.email}</p>
           )}
-          <p className="mt-1 text-xs uppercase tracking-wide text-muted-foreground">
-            Status: {clientStatus}
-          </p>
+          <div className="mt-2">
+            <StatusBadge tone={clientStatus === 'archived' ? 'muted' : 'brand'}>
+              {clientStatus}
+            </StatusBadge>
+          </div>
         </div>
         <Link
           href={`/admin/clients/${id}/assignments/new`}
@@ -124,11 +124,9 @@ export default async function ClientDetailPage({
                     </div>
                   </Link>
                   <div className="flex shrink-0 items-center gap-3">
-                    <span
-                      className={`rounded px-2 py-0.5 text-xs font-medium uppercase ${statusBadge[a.status]}`}
-                    >
+                    <StatusBadge tone={ASSIGNMENT_STATUS_TONE[a.status]}>
                       {a.status}
-                    </span>
+                    </StatusBadge>
                     <Link
                       href={`/admin/assignments/${a.id}`}
                       className={buttonVariants({

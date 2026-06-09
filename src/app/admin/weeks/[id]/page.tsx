@@ -17,6 +17,7 @@ import {
   copyWeekContents,
   propagateToLaterWeeks,
 } from './actions'
+import { StatusBadge } from '@/components/status-badge'
 
 interface ExerciseLibraryRow {
   id: string
