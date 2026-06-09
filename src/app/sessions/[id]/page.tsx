@@ -149,7 +149,7 @@ export default async function SessionPage({
           </span>
           Back
         </Link>
-        <WioLogo variant="mark" size={64} />
+        <WioLogo variant="mark" size={96} />
       </header>
 
       <div className="mb-6">

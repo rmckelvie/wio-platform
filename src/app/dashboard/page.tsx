@@ -70,7 +70,7 @@ export default async function DashboardPage() {
             Log out
           </Button>
         </form>
-        <WioLogo variant="mark" size={64} />
+        <WioLogo variant="mark" size={96} />
       </header>
 
       <div className="mb-2 text-xs uppercase tracking-wide text-muted-foreground">

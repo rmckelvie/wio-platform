@@ -25,6 +25,15 @@ interface ExerciseLibraryRow {
   section_types: SectionType[] | null
 }
 
+interface ExerciseLog {
+  id: string
+  set_number: number
+  weight_kg: number | null
+  reps_done: number | null
+  rpe: number | null
+  logged_at: string
+}
+
 interface AssignedExercise {
   id: string
   order_index: number
@@ -32,6 +41,7 @@ interface AssignedExercise {
   prescribed_reps: string | null
   notes: string | null
   exercises: { id: string; name: string; video_url: string | null } | null
+  exercise_logs: ExerciseLog[]
 }
 
 interface AssignedSection {
@@ -94,7 +104,10 @@ export default async function WeekPage({
           id, order_index, section_type,
           assigned_exercises (
             id, order_index, prescribed_sets, prescribed_reps, notes,
-            exercises ( id, name, video_url )
+            exercises ( id, name, video_url ),
+            exercise_logs (
+              id, set_number, weight_kg, reps_done, rpe, logged_at
+            )
           )
         )
       )
@@ -113,6 +126,9 @@ export default async function WeekPage({
     s.assigned_sections.sort((a, b) => a.order_index - b.order_index)
     s.assigned_sections.forEach((sec) => {
       sec.assigned_exercises.sort((a, b) => a.order_index - b.order_index)
+      sec.assigned_exercises.forEach((ae) => {
+        ae.exercise_logs?.sort?.((a, b) => a.set_number - b.set_number)
+      })
     })
   })
 
@@ -547,94 +563,120 @@ function SectionBlock({
           {section.assigned_exercises.map((ae, i) => {
             const isFirstEx = i === 0
             const isLastEx = i === section.assigned_exercises.length - 1
+            const logs = ae.exercise_logs ?? []
             return (
-              <li
-                key={ae.id}
-                className="flex items-center gap-3 py-2 text-sm"
-              >
-                <div className="flex shrink-0 flex-col">
-                  <form
-                    action={async () => {
-                      'use server'
-                      await moveAssignedExercise(ae.id, 'up')
-                    }}
-                  >
-                    <Button
-                      type="submit"
-                      variant="ghost"
-                      size="icon-xs"
-                      disabled={isFirstEx}
-                      aria-label="Move exercise up"
+              <li key={ae.id} className="py-2 text-sm">
+                <div className="flex items-center gap-3">
+                  <div className="flex shrink-0 flex-col">
+                    <form
+                      action={async () => {
+                        'use server'
+                        await moveAssignedExercise(ae.id, 'up')
+                      }}
                     >
-                      ↑
-                    </Button>
-                  </form>
-                  <form
-                    action={async () => {
-                      'use server'
-                      await moveAssignedExercise(ae.id, 'down')
-                    }}
-                  >
-                    <Button
-                      type="submit"
-                      variant="ghost"
-                      size="icon-xs"
-                      disabled={isLastEx}
-                      aria-label="Move exercise down"
+                      <Button
+                        type="submit"
+                        variant="ghost"
+                        size="icon-xs"
+                        disabled={isFirstEx}
+                        aria-label="Move exercise up"
+                      >
+                        ↑
+                      </Button>
+                    </form>
+                    <form
+                      action={async () => {
+                        'use server'
+                        await moveAssignedExercise(ae.id, 'down')
+                      }}
                     >
-                      ↓
-                    </Button>
-                  </form>
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="font-medium">
-                    {ae.exercises?.name ?? '(deleted exercise)'}
+                      <Button
+                        type="submit"
+                        variant="ghost"
+                        size="icon-xs"
+                        disabled={isLastEx}
+                        aria-label="Move exercise down"
+                      >
+                        ↓
+                      </Button>
+                    </form>
                   </div>
-                  {ae.notes && (
-                    <div className="text-xs text-muted-foreground">
-                      {ae.notes}
+                  <div className="min-w-0 flex-1">
+                    <div className="font-medium">
+                      {ae.exercises?.name ?? '(deleted exercise)'}
                     </div>
-                  )}
-                  {ae.exercises?.video_url && (
-                    <a
-                      href={ae.exercises.video_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-xs text-brand hover:underline"
+                    {ae.notes && (
+                      <div className="text-xs text-muted-foreground">
+                        {ae.notes}
+                      </div>
+                    )}
+                    {ae.exercises?.video_url && (
+                      <a
+                        href={ae.exercises.video_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-brand hover:underline"
+                      >
+                        Demo
+                      </a>
+                    )}
+                  </div>
+                  <div className="w-16 text-right tabular-nums text-xs">
+                    {ae.prescribed_sets ?? '—'}
+                  </div>
+                  <div className="w-20 text-right tabular-nums text-xs">
+                    {ae.prescribed_reps ?? '—'}
+                  </div>
+                  <div className="flex shrink-0 items-center gap-1">
+                    <Link
+                      href={`/admin/assigned-exercises/${ae.id}/edit`}
+                      className={buttonVariants({ variant: 'ghost', size: 'xs' })}
                     >
-                      Demo
-                    </a>
-                  )}
-                </div>
-                <div className="w-16 text-right tabular-nums text-xs">
-                  {ae.prescribed_sets ?? '—'}
-                </div>
-                <div className="w-20 text-right tabular-nums text-xs">
-                  {ae.prescribed_reps ?? '—'}
-                </div>
-                <div className="flex shrink-0 items-center gap-1">
-                  <Link
-                    href={`/admin/assigned-exercises/${ae.id}/edit`}
-                    className={buttonVariants({ variant: 'ghost', size: 'xs' })}
-                  >
-                    Edit
-                  </Link>
-                  <form
-                    action={async () => {
-                      'use server'
-                      await deleteAssignedExercise(ae.id)
-                    }}
-                  >
-                    <Button
-                      type="submit"
-                      variant="ghost"
-                      size="xs"
-                      className="text-destructive hover:bg-destructive/10"
+                      Edit
+                    </Link>
+                    <form
+                      action={async () => {
+                        'use server'
+                        await deleteAssignedExercise(ae.id)
+                      }}
                     >
-                      ×
-                    </Button>
-                  </form>
+                      <Button
+                        type="submit"
+                        variant="ghost"
+                        size="xs"
+                        className="text-destructive hover:bg-destructive/10"
+                      >
+                        ×
+                      </Button>
+                    </form>
+                  </div>
                 </div>
+
+                {/* Client-logged sets (read-only) */}
+                {logs.length > 0 && (
+                  <div className="ml-8 mt-1.5 flex flex-wrap items-center gap-1.5 text-xs">
+                    <span className="uppercase tracking-wide text-muted-foreground">
+                      Client logged:
+                    </span>
+                    {logs.map((log) => (
+                      <span
+                        key={log.id}
+                        className="rounded-md border border-brand/30 bg-brand/10 px-2 py-0.5 tabular-nums text-brand"
+                      >
+                        <span className="opacity-70">#{log.set_number} </span>
+                        {log.weight_kg !== null
+                          ? `${Number.parseFloat(log.weight_kg.toString())}kg`
+                          : '—'}
+                        {log.reps_done !== null && (
+                          <span> × {log.reps_done}</span>
+                        )}
+                        {log.rpe !== null && (
+                          <span className="opacity-70"> · RPE {log.rpe}</span>
+                        )}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </li>
             )
           })}
