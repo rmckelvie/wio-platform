@@ -19,15 +19,64 @@ export function EmomTimer({
   intervalSeconds: number
   totalSets: number
 }) {
+  const totalDuration = intervalSeconds * totalSets
   const [startedAt, setStartedAt] = useState<number | null>(null)
-  const [tick, setTick] = useState(0)
-  const lastSetRef = useRef<number>(0)
+  const [elapsedSec, setElapsedSec] = useState(0)
+  const lastSetBoundaryRef = useRef<number>(0)
+  const finishedChimedRef = useRef(false)
+
+  const running = startedAt !== null && elapsedSec < totalDuration
+
+  // Tick driver — stops as soon as we reach totalDuration
+  useEffect(() => {
+    if (!running || startedAt === null) return
+    let cancelled = false
+    const id = setInterval(() => {
+      if (cancelled) return
+      const next = (Date.now() - startedAt) / 1000
+      if (next >= totalDuration) {
+        cancelled = true
+        clearInterval(id)
+        setElapsedSec(totalDuration)
+      } else {
+        setElapsedSec(next)
+      }
+    }, 200)
+    return () => {
+      cancelled = true
+      clearInterval(id)
+    }
+  }, [running, startedAt, totalDuration])
+
+  // Boundary chimes — once per new set, once at finish
+  const currentSetIndex = Math.min(
+    totalSets - 1,
+    Math.floor(elapsedSec / intervalSeconds),
+  )
+  const currentSet = currentSetIndex + 1
+  const finished = startedAt !== null && elapsedSec >= totalDuration
 
   useEffect(() => {
-    if (startedAt === null) return
-    const id = setInterval(() => setTick((t) => t + 1), 200)
-    return () => clearInterval(id)
-  }, [startedAt])
+    if (startedAt === null) {
+      lastSetBoundaryRef.current = 0
+      finishedChimedRef.current = false
+      return
+    }
+    if (
+      currentSet !== lastSetBoundaryRef.current &&
+      lastSetBoundaryRef.current !== 0
+    ) {
+      playEndChime()
+    }
+    lastSetBoundaryRef.current = currentSet
+  }, [currentSet, startedAt])
+
+  useEffect(() => {
+    if (finished && !finishedChimedRef.current) {
+      finishedChimedRef.current = true
+      playEndChime()
+    }
+  }, [finished])
 
   if (startedAt === null) {
     return (
@@ -35,9 +84,9 @@ export function EmomTimer({
         type="button"
         variant="outline"
         size="lg"
-        className="w-full"
+        className="mb-3 w-full"
         onClick={() => {
-          lastSetRef.current = 0
+          setElapsedSec(0)
           setStartedAt(Date.now())
         }}
       >
@@ -45,40 +94,6 @@ export function EmomTimer({
       </Button>
     )
   }
-
-  const elapsedMs = Date.now() - startedAt
-  const elapsedSec = elapsedMs / 1000
-  const totalDuration = intervalSeconds * totalSets
-  const finished = elapsedSec >= totalDuration
-
-  const currentSetIndex = Math.min(
-    totalSets - 1,
-    Math.floor(elapsedSec / intervalSeconds),
-  )
-  const currentSet = currentSetIndex + 1
-  const secInSet = elapsedSec - currentSetIndex * intervalSeconds
-  const remainInSet = Math.max(0, intervalSeconds - secInSet)
-  const mins = Math.floor(remainInSet / 60)
-  const secs = Math.floor(remainInSet) % 60
-  const progress = Math.max(
-    0,
-    Math.min(100, (secInSet / intervalSeconds) * 100),
-  )
-
-  // Chime when set boundary changes (and at finish)
-  if (currentSet !== lastSetRef.current) {
-    if (lastSetRef.current !== 0) {
-      // Don't chime on the very first set (when timer first starts)
-      playEndChime()
-    }
-    lastSetRef.current = currentSet
-  }
-  if (finished && lastSetRef.current !== -1) {
-    playEndChime()
-    lastSetRef.current = -1
-  }
-  // Reference tick so the linter doesn't strip the dependency
-  void tick
 
   if (finished) {
     return (
@@ -94,13 +109,25 @@ export function EmomTimer({
           variant="ghost"
           size="sm"
           className="mt-2"
-          onClick={() => setStartedAt(null)}
+          onClick={() => {
+            setStartedAt(null)
+            setElapsedSec(0)
+          }}
         >
           Reset
         </Button>
       </div>
     )
   }
+
+  const secInSet = elapsedSec - currentSetIndex * intervalSeconds
+  const remainInSet = Math.max(0, intervalSeconds - secInSet)
+  const mins = Math.floor(remainInSet / 60)
+  const secs = Math.floor(remainInSet) % 60
+  const progress = Math.max(
+    0,
+    Math.min(100, (secInSet / intervalSeconds) * 100),
+  )
 
   return (
     <div className="mb-3 rounded-lg border border-brand/60 bg-brand/10 p-4">
@@ -114,7 +141,7 @@ export function EmomTimer({
           size="xs"
           onClick={() => {
             setStartedAt(null)
-            lastSetRef.current = 0
+            setElapsedSec(0)
           }}
         >
           Stop

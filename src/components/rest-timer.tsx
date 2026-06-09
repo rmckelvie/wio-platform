@@ -22,31 +22,44 @@ export function RestTimer({
   const [remaining, setRemaining] = useState(initialRemaining)
   const [dismissed, setDismissed] = useState(false)
   const chimedRef = useRef(false)
+  const finished = remaining <= 0
 
   useEffect(() => {
-    if (dismissed) return
-    if (remaining <= 0) {
-      if (!chimedRef.current) {
-        chimedRef.current = true
-        playEndChime()
-      }
-      return
-    }
+    if (dismissed || finished) return
+
+    let cancelled = false
     const id = setInterval(() => {
-      setRemaining(computeRemaining(totalSeconds, startedAtIso))
+      if (cancelled) return
+      const next = computeRemaining(totalSeconds, startedAtIso)
+      if (next <= 0) {
+        cancelled = true
+        clearInterval(id)
+        setRemaining(0)
+      } else {
+        setRemaining(next)
+      }
     }, 250)
-    return () => clearInterval(id)
-  }, [remaining, dismissed, totalSeconds, startedAtIso])
+
+    return () => {
+      cancelled = true
+      clearInterval(id)
+    }
+  }, [dismissed, finished, totalSeconds, startedAtIso])
+
+  // Chime once when we cross zero
+  useEffect(() => {
+    if (finished && !chimedRef.current) {
+      chimedRef.current = true
+      playEndChime()
+    }
+  }, [finished])
 
   if (dismissed) return null
 
-  const finished = remaining <= 0
-  const mins = Math.floor(Math.abs(remaining) / 60)
-  const secs = Math.abs(remaining) % 60
-  const display = `${mins}:${secs.toString().padStart(2, '0')}`
+  const display = formatMmSs(Math.max(0, remaining))
   const progress = Math.max(
     0,
-    Math.min(100, ((totalSeconds - remaining) / totalSeconds) * 100),
+    Math.min(100, ((totalSeconds - Math.max(0, remaining)) / totalSeconds) * 100),
   )
 
   return (
@@ -62,9 +75,7 @@ export function RestTimer({
           <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
             {finished ? 'Rest complete' : 'Rest'}
           </p>
-          <p className="text-2xl font-semibold tabular-nums">
-            {display}
-          </p>
+          <p className="text-2xl font-semibold tabular-nums">{display}</p>
         </div>
         <Button
           type="button"
@@ -90,4 +101,10 @@ function computeRemaining(total: number, startedAtIso: string): number {
   if (!Number.isFinite(startMs)) return total
   const elapsedSec = Math.floor((Date.now() - startMs) / 1000)
   return total - elapsedSec
+}
+
+function formatMmSs(s: number): string {
+  const mins = Math.floor(s / 60)
+  const secs = s % 60
+  return `${mins}:${secs.toString().padStart(2, '0')}`
 }
