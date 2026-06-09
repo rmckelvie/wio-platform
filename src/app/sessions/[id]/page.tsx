@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server'
 import { Button } from '@/components/ui/button'
 import { WioLogo } from '@/components/wio-logo'
 import { sectionLabel, type SectionType } from '@/lib/sections'
+import { parseMaxSets } from '@/lib/prescription'
 import { logSet, deleteLog } from './actions'
 
 interface ExerciseLog {
@@ -55,6 +56,16 @@ interface SessionData {
   assigned_sections: AssignedSection[]
 }
 
+/** Flattened entry for the swipe carousel — one card per exercise. */
+interface FlatExercise {
+  ex: AssignedExercise
+  sectionType: SectionType
+  positionInSection: number // 1-indexed
+  sectionCount: number
+  positionInSession: number // 1-indexed
+  sessionCount: number
+}
+
 const inputClass =
   'w-full rounded-lg border border-input bg-background px-3 py-3 text-base outline-none focus:border-brand focus:ring-2 focus:ring-brand/30'
 
@@ -68,7 +79,6 @@ export default async function SessionPage({
   const { id: sessionId } = await params
   const { error: errMsg } = await searchParams
 
-  // Auth check (admins can also view but the UI is built for clients)
   await requireUser()
 
   const supabase = await createClient()
@@ -107,32 +117,49 @@ export default async function SessionPage({
     }
   }
 
+  // Flatten into carousel order with positional metadata
+  const flat: FlatExercise[] = []
+  for (const sec of session.assigned_sections) {
+    for (let i = 0; i < sec.assigned_exercises.length; i++) {
+      flat.push({
+        ex: sec.assigned_exercises[i],
+        sectionType: sec.section_type,
+        positionInSection: i + 1,
+        sectionCount: sec.assigned_exercises.length,
+        positionInSession: flat.length + 1,
+        sessionCount: 0, // patched below
+      })
+    }
+  }
+  flat.forEach((f) => (f.sessionCount = flat.length))
+
   const week = session.assignment_weeks!
   const assignment = week.client_assignments!
 
   return (
-    <main className="mx-auto w-full max-w-md px-5 pb-24 pt-6">
-      <header className="mb-6 flex items-center justify-between">
+    <main className="mx-auto w-full max-w-md px-5 pb-12 pt-6">
+      <header className="mb-6 flex items-start justify-between gap-3">
         <Link
           href="/dashboard"
           aria-label="Back to dashboard"
-          className="-ml-2 inline-flex h-10 items-center gap-1 rounded-lg px-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
+          className="-ml-2 inline-flex h-12 items-center gap-1 rounded-lg px-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
         >
-          <span aria-hidden className="text-lg">
+          <span aria-hidden className="text-xl">
             ←
           </span>
           Back
         </Link>
-        <WioLogo variant="mark" size={36} />
+        <WioLogo variant="mark" size={64} />
       </header>
 
-      <div className="mb-8">
+      <div className="mb-6">
         <p className="text-xs uppercase tracking-wide text-brand">
           {assignment.name} · Week {week.week_index}
         </p>
         <h1 className="mt-1 text-2xl font-semibold">{session.name}</h1>
         <p className="mt-1 text-xs text-muted-foreground">
-          Session {session.session_index}
+          Session {session.session_index} · {flat.length}{' '}
+          exercise{flat.length === 1 ? '' : 's'}
         </p>
       </div>
 
@@ -142,80 +169,86 @@ export default async function SessionPage({
         </p>
       )}
 
-      {session.assigned_sections.length === 0 ? (
+      {flat.length === 0 ? (
         <p className="rounded-xl border border-border bg-card p-4 text-sm text-muted-foreground">
           No content authored for this session yet.
         </p>
       ) : (
-        <div className="space-y-8">
-          {session.assigned_sections.map((sec) => (
-            <SectionView
-              key={sec.id}
-              section={sec}
-              sessionId={sessionId}
-            />
-          ))}
-        </div>
+        <>
+          <p className="mb-3 text-center text-xs uppercase tracking-[0.2em] text-muted-foreground">
+            Swipe to navigate
+          </p>
+          <div
+            className="-mx-5 flex snap-x snap-mandatory overflow-x-auto scroll-smooth"
+            style={{ scrollPaddingInline: '1.25rem' }}
+          >
+            {flat.map((entry, i) => {
+              const prev = flat[i - 1]
+              const next = flat[i + 1]
+              return (
+                <section
+                  key={entry.ex.id}
+                  id={`ex-${entry.ex.id}`}
+                  className="min-w-full shrink-0 snap-center px-5"
+                >
+                  <ExerciseCard
+                    entry={entry}
+                    sessionId={sessionId}
+                    prevAnchor={prev ? `#ex-${prev.ex.id}` : null}
+                    nextAnchor={next ? `#ex-${next.ex.id}` : null}
+                  />
+                </section>
+              )
+            })}
+          </div>
+        </>
       )}
     </main>
   )
 }
 
-function SectionView({
-  section,
-  sessionId,
-}: {
-  section: AssignedSection
-  sessionId: string
-}) {
-  return (
-    <section className="space-y-4">
-      <h2 className="text-xs font-semibold uppercase tracking-[0.15em] text-brand">
-        {sectionLabel(section.section_type)}
-      </h2>
-
-      {section.assigned_exercises.length === 0 ? (
-        <p className="rounded-xl border border-border bg-card p-3 text-xs text-muted-foreground">
-          No exercises in this section.
-        </p>
-      ) : (
-        <ul className="space-y-4">
-          {section.assigned_exercises.map((ex) => (
-            <li key={ex.id}>
-              <ExerciseCard ex={ex} sessionId={sessionId} />
-            </li>
-          ))}
-        </ul>
-      )}
-    </section>
-  )
-}
-
 function fmtWeight(kg: number | null) {
   if (kg === null) return '—'
-  // Trim trailing zeros for tidy display: 60.00 → 60, 62.50 → 62.5
   return Number.parseFloat(kg.toString()).toString() + ' kg'
 }
 
 function ExerciseCard({
-  ex,
+  entry,
   sessionId,
+  prevAnchor,
+  nextAnchor,
 }: {
-  ex: AssignedExercise
+  entry: FlatExercise
   sessionId: string
+  prevAnchor: string | null
+  nextAnchor: string | null
 }) {
+  const { ex, sectionType, positionInSection, sectionCount } = entry
   const name = ex.exercises?.name ?? '(deleted exercise)'
   const videoUrl = ex.exercises?.video_url
   const sharedNotes = ex.notes || ex.exercises?.default_notes
   const prescribed =
     [ex.prescribed_sets, ex.prescribed_reps].filter(Boolean).join(' × ') || null
 
+  const loggedCount = ex.exercise_logs.length
+  const maxSets = parseMaxSets(ex.prescribed_sets)
+  const allLogged = maxSets !== null && loggedCount >= maxSets
+
   const logSetBound = logSet.bind(null, ex.id, sessionId)
 
   return (
     <article className="rounded-xl border border-border bg-card p-4">
+      <header className="mb-3 flex items-baseline justify-between gap-2">
+        <span className="text-xs font-semibold uppercase tracking-[0.18em] text-brand">
+          {sectionLabel(sectionType)}
+        </span>
+        <span className="text-xs tabular-nums text-muted-foreground">
+          {positionInSection} / {sectionCount}
+        </span>
+      </header>
+
       <div className="mb-3">
-        <h3 className="text-base font-medium">{name}</h3>
+        <h3 className="text-lg font-medium">{name}</h3>
         {prescribed && (
           <p className="mt-0.5 text-sm text-muted-foreground">
             Prescribed: <span className="text-foreground">{prescribed}</span>
@@ -280,52 +313,98 @@ function ExerciseCard({
         </ul>
       )}
 
-      <form action={logSetBound} className="space-y-2">
-        <div className="grid grid-cols-2 gap-2">
+      {allLogged ? (
+        <div className="rounded-lg border border-brand/40 bg-brand/10 p-4 text-center">
+          <p className="text-sm font-medium text-brand">
+            ✓ All {maxSets} set{maxSets === 1 ? '' : 's'} logged
+          </p>
+          {nextAnchor && (
+            <p className="mt-1 text-xs text-muted-foreground">
+              Swipe to the next exercise.
+            </p>
+          )}
+        </div>
+      ) : (
+        <form action={logSetBound} className="space-y-2">
+          <div className="grid grid-cols-2 gap-2">
+            <label className="flex flex-col gap-1">
+              <span className="text-xs text-muted-foreground">Weight (kg)</span>
+              <input
+                name="weight_kg"
+                type="number"
+                inputMode="decimal"
+                step="0.5"
+                min={0}
+                placeholder="0"
+                className={inputClass}
+              />
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-xs text-muted-foreground">Reps</span>
+              <input
+                name="reps_done"
+                type="number"
+                inputMode="numeric"
+                step="1"
+                min={0}
+                placeholder="0"
+                className={inputClass}
+              />
+            </label>
+          </div>
           <label className="flex flex-col gap-1">
-            <span className="text-xs text-muted-foreground">Weight (kg)</span>
+            <span className="text-xs text-muted-foreground">
+              RPE <span className="opacity-60">(optional, 0–10)</span>
+            </span>
             <input
-              name="weight_kg"
+              name="rpe"
               type="number"
               inputMode="decimal"
               step="0.5"
               min={0}
-              placeholder="0"
+              max={10}
+              placeholder="—"
               className={inputClass}
             />
           </label>
-          <label className="flex flex-col gap-1">
-            <span className="text-xs text-muted-foreground">Reps</span>
-            <input
-              name="reps_done"
-              type="number"
-              inputMode="numeric"
-              step="1"
-              min={0}
-              placeholder="0"
-              className={inputClass}
-            />
-          </label>
-        </div>
-        <label className="flex flex-col gap-1">
+          <Button type="submit" size="lg" className="w-full">
+            Log set {loggedCount + 1}
+            {maxSets !== null ? ` of ${maxSets}` : ''}
+          </Button>
+        </form>
+      )}
+
+      {/* Prev / next nav anchors. Browser jumps to the snap point. */}
+      <nav className="mt-4 flex items-center justify-between text-sm">
+        {prevAnchor ? (
+          <a
+            href={prevAnchor}
+            className="inline-flex h-10 items-center gap-1 rounded-lg px-2 text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <span aria-hidden className="text-lg">
+              ←
+            </span>
+            Prev
+          </a>
+        ) : (
+          <span />
+        )}
+        {nextAnchor ? (
+          <a
+            href={nextAnchor}
+            className="inline-flex h-10 items-center gap-1 rounded-lg px-2 text-brand transition-opacity hover:opacity-80"
+          >
+            Next
+            <span aria-hidden className="text-lg">
+              →
+            </span>
+          </a>
+        ) : (
           <span className="text-xs text-muted-foreground">
-            RPE <span className="opacity-60">(optional, 0–10)</span>
+            Last exercise — swipe back when done
           </span>
-          <input
-            name="rpe"
-            type="number"
-            inputMode="decimal"
-            step="0.5"
-            min={0}
-            max={10}
-            placeholder="—"
-            className={inputClass}
-          />
-        </label>
-        <Button type="submit" size="lg" className="w-full">
-          Log set {ex.exercise_logs.length + 1}
-        </Button>
-      </form>
+        )}
+      </nav>
     </article>
   )
 }

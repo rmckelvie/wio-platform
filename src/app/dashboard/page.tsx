@@ -65,12 +65,12 @@ export default async function DashboardPage() {
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-md flex-col px-5 pb-12 pt-8">
       <header className="mb-8 flex items-center justify-between">
-        <WioLogo variant="mark" size={44} />
         <form action={logout}>
           <Button type="submit" variant="ghost" size="sm">
             Log out
           </Button>
         </form>
+        <WioLogo variant="mark" size={64} />
       </header>
 
       <div className="mb-2 text-xs uppercase tracking-wide text-muted-foreground">
