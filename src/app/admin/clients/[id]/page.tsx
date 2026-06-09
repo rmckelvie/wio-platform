@@ -123,7 +123,7 @@ export default async function ClientDetailPage({
                       {fmt(a.start_date)} → {fmt(endDate)} · {a.weeks} weeks
                     </div>
                   </Link>
-                  <div className="flex shrink-0 items-center gap-3">
+                  <div className="flex shrink-0 items-center gap-2">
                     <StatusBadge tone={ASSIGNMENT_STATUS_TONE[a.status]}>
                       {a.status}
                     </StatusBadge>
@@ -135,6 +135,16 @@ export default async function ClientDetailPage({
                       })}
                     >
                       Open
+                    </Link>
+                    <Link
+                      href={`/admin/assignments/${a.id}/delete`}
+                      className={buttonVariants({
+                        variant: 'ghost',
+                        size: 'sm',
+                      })}
+                      aria-label={`Delete ${a.name}`}
+                    >
+                      <span className="text-destructive">Delete</span>
                     </Link>
                   </div>
                 </li>

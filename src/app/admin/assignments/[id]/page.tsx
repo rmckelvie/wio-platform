@@ -208,6 +208,32 @@ export default async function AssignmentDetailPage({
           </ul>
         )}
       </section>
+
+      <section className="space-y-3 pt-8">
+        <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
+          Danger zone
+        </h2>
+        <div className="rounded border border-destructive/40 p-4">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <div className="font-medium">Delete this assignment</div>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Permanently removes the assignment, all weeks, sessions,
+                prescribed exercises, and logged sets. No undo.
+              </p>
+            </div>
+            <Link
+              href={`/admin/assignments/${a.id}/delete`}
+              className={buttonVariants({
+                variant: 'destructive',
+                size: 'sm',
+              })}
+            >
+              Delete assignment
+            </Link>
+          </div>
+        </div>
+      </section>
     </div>
   )
 }

@@ -74,3 +74,52 @@ export async function setAssignmentStatus(
   await supabase.from('client_assignments').update({ status }).eq('id', id)
   revalidatePath(`/admin/assignments/${id}`)
 }
+
+/**
+ * Hard-delete an assignment. The ON DELETE CASCADE chain takes
+ * assignment_weeks → assigned_sessions → assigned_sections →
+ * assigned_exercises → exercise_logs with it. The shared exercise
+ * library and the client profile are untouched.
+ *
+ * Trainer must type the assignment name to confirm.
+ */
+export async function deleteAssignment(id: string, formData: FormData) {
+  await requireAdmin()
+  const supabase = await createClient()
+
+  const { data: a, error: fetchErr } = await supabase
+    .from('client_assignments')
+    .select('id, name, client_id')
+    .eq('id', id)
+    .single()
+
+  if (fetchErr || !a) {
+    redirect(`/admin/clients?error=Assignment+not+found`)
+  }
+
+  const confirmation = (formData.get('confirm_name') ?? '')
+    .toString()
+    .trim()
+    .toLowerCase()
+  if (confirmation !== a.name.toLowerCase()) {
+    redirect(
+      `/admin/assignments/${id}/delete?error=${encodeURIComponent(
+        'Assignment name did not match',
+      )}`,
+    )
+  }
+
+  const { error } = await supabase
+    .from('client_assignments')
+    .delete()
+    .eq('id', id)
+
+  if (error) {
+    redirect(
+      `/admin/assignments/${id}/delete?error=${encodeURIComponent(error.message)}`,
+    )
+  }
+
+  revalidatePath(`/admin/clients/${a.client_id}`)
+  redirect(`/admin/clients/${a.client_id}`)
+}
