@@ -94,3 +94,20 @@ export async function deleteLog(logId: string, sessionId: string) {
   await supabase.from('exercise_logs').delete().eq('id', logId)
   revalidatePath(`/sessions/${sessionId}`)
 }
+
+/**
+ * Toggle the `completed_at` timestamp on a session. RLS lets the owning
+ * client update; admins can too (admin policy ORs with the client one).
+ */
+export async function toggleSessionComplete(
+  sessionId: string,
+  currentlyComplete: boolean,
+) {
+  const supabase = await createClient()
+  await supabase
+    .from('assigned_sessions')
+    .update({ completed_at: currentlyComplete ? null : new Date().toISOString() })
+    .eq('id', sessionId)
+  revalidatePath(`/sessions/${sessionId}`)
+  revalidatePath('/dashboard')
+}

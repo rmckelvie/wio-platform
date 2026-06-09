@@ -10,6 +10,7 @@ interface SessionRow {
   id: string
   session_index: number
   name: string
+  completed_at: string | null
 }
 
 interface WeekRow {
@@ -43,7 +44,7 @@ export default async function DashboardPage() {
       `
       id, week_index, name, release_date,
       client_assignments!inner ( id, name, status, weeks ),
-      assigned_sessions ( id, session_index, name )
+      assigned_sessions ( id, session_index, name, completed_at )
     `,
     )
     .eq('client_assignments.status', 'active')
@@ -70,7 +71,7 @@ export default async function DashboardPage() {
             Log out
           </Button>
         </form>
-        <WioLogo variant="mark" size={96} />
+        <WioLogo variant="mark" size={192} />
       </header>
 
       <div className="mb-2 text-xs uppercase tracking-wide text-muted-foreground">
@@ -114,27 +115,46 @@ export default async function DashboardPage() {
                   </p>
                 ) : (
                   <ul className="space-y-3">
-                    {sessions.map((s) => (
-                      <li key={s.id}>
-                        <Link
-                          href={`/sessions/${s.id}`}
-                          className="flex items-center justify-between gap-3 rounded-xl border border-border bg-card p-4 transition-colors hover:border-brand/60 hover:bg-secondary"
-                        >
-                          <div>
-                            <div className="text-xs uppercase tracking-wide text-muted-foreground">
-                              Session {s.session_index}
-                            </div>
-                            <div className="text-lg font-medium">{s.name}</div>
-                          </div>
-                          <span
-                            aria-hidden
-                            className="text-2xl text-muted-foreground"
+                    {sessions.map((s) => {
+                      const done = !!s.completed_at
+                      return (
+                        <li key={s.id}>
+                          <Link
+                            href={`/sessions/${s.id}`}
+                            className={`flex items-center justify-between gap-3 rounded-xl border p-4 transition-colors ${
+                              done
+                                ? 'border-brand/40 bg-brand/10'
+                                : 'border-border bg-card hover:border-brand/60 hover:bg-secondary'
+                            }`}
                           >
-                            →
-                          </span>
-                        </Link>
-                      </li>
-                    ))}
+                            <div className="min-w-0">
+                              <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                                Session {s.session_index}
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-lg font-medium">
+                                  {s.name}
+                                </span>
+                                {done && (
+                                  <span
+                                    aria-label="Session completed"
+                                    className="rounded-full border border-brand/40 bg-brand/15 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-brand"
+                                  >
+                                    ✓
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            <span
+                              aria-hidden
+                              className="text-2xl text-muted-foreground"
+                            >
+                              →
+                            </span>
+                          </Link>
+                        </li>
+                      )
+                    })}
                   </ul>
                 )}
               </section>

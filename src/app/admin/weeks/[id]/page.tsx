@@ -313,6 +313,7 @@ export default async function WeekPage({
             key={session.id}
             session={session}
             library={library}
+            assignmentId={week.assignment_id}
             isFirst={i === 0}
             isLast={i === week.assigned_sessions.length - 1}
           />
@@ -347,11 +348,13 @@ export default async function WeekPage({
 function SessionCard({
   session,
   library,
+  assignmentId,
   isFirst,
   isLast,
 }: {
   session: AssignedSession
   library: ExerciseLibraryRow[]
+  assignmentId: string
   isFirst: boolean
   isLast: boolean
 }) {
@@ -438,6 +441,7 @@ function SessionCard({
             key={section.id}
             section={section}
             library={library}
+            assignmentId={assignmentId}
             isFirst={i === 0}
             isLast={i === session.assigned_sections.length - 1}
           />
@@ -482,11 +486,13 @@ function SessionCard({
 function SectionBlock({
   section,
   library,
+  assignmentId,
   isFirst,
   isLast,
 }: {
   section: AssignedSection
   library: ExerciseLibraryRow[]
+  assignmentId: string
   isFirst: boolean
   isLast: boolean
 }) {
@@ -628,6 +634,15 @@ function SectionBlock({
                     {ae.prescribed_reps ?? '—'}
                   </div>
                   <div className="flex shrink-0 items-center gap-1">
+                    {ae.exercises?.id && (
+                      <Link
+                        href={`/admin/assignments/${assignmentId}/exercises/${ae.exercises.id}`}
+                        className={buttonVariants({ variant: 'ghost', size: 'xs' })}
+                        aria-label="View this exercise across all weeks of the assignment"
+                      >
+                        History
+                      </Link>
+                    )}
                     <Link
                       href={`/admin/assigned-exercises/${ae.id}/edit`}
                       className={buttonVariants({ variant: 'ghost', size: 'xs' })}

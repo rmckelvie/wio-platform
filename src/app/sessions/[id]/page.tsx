@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { WioLogo } from '@/components/wio-logo'
 import { sectionLabel, type SectionType } from '@/lib/sections'
 import { parseMaxSets } from '@/lib/prescription'
-import { logSet, deleteLog } from './actions'
+import { logSet, deleteLog, toggleSessionComplete } from './actions'
 
 interface ExerciseLog {
   id: string
@@ -44,6 +44,7 @@ interface SessionData {
   id: string
   session_index: number
   name: string
+  completed_at: string | null
   assignment_weeks: {
     week_index: number
     name: string | null
@@ -56,14 +57,30 @@ interface SessionData {
   assigned_sections: AssignedSection[]
 }
 
-/** Flattened entry for the swipe carousel — one card per exercise. */
+interface PriorLog {
+  id: string
+  set_number: number
+  weight_kg: number | null
+  reps_done: number | null
+  rpe: number | null
+  logged_at: string
+  assigned_exercise_id: string
+  assigned_exercises: { exercise_id: string } | null
+}
+
+interface LastSession {
+  logs: PriorLog[]
+  date: string
+}
+
 interface FlatExercise {
   ex: AssignedExercise
   sectionType: SectionType
-  positionInSection: number // 1-indexed
+  positionInSection: number
   sectionCount: number
-  positionInSession: number // 1-indexed
+  positionInSession: number
   sessionCount: number
+  lastSession: LastSession | null
 }
 
 const inputClass =
@@ -86,7 +103,7 @@ export default async function SessionPage({
     .from('assigned_sessions')
     .select(
       `
-      id, session_index, name,
+      id, session_index, name, completed_at,
       assignment_weeks!inner (
         week_index, name,
         client_assignments!inner ( id, name, weeks )
@@ -117,17 +134,77 @@ export default async function SessionPage({
     }
   }
 
-  // Flatten into carousel order with positional metadata
+  // Gather library exercise ids + current assigned_exercise ids
+  const exerciseIds = new Set<string>()
+  const currentAeIds = new Set<string>()
+  for (const sec of session.assigned_sections) {
+    for (const ae of sec.assigned_exercises) {
+      if (ae.exercises?.id) exerciseIds.add(ae.exercises.id)
+      currentAeIds.add(ae.id)
+    }
+  }
+
+  // Fetch prior logs for these exercise ids (RLS filters to current user)
+  let priorByExerciseId = new Map<string, LastSession>()
+  if (exerciseIds.size > 0) {
+    const { data: priorRows } = await supabase
+      .from('exercise_logs')
+      .select(
+        `
+        id, set_number, weight_kg, reps_done, rpe, logged_at,
+        assigned_exercise_id,
+        assigned_exercises!inner ( exercise_id )
+      `,
+      )
+      .in('assigned_exercises.exercise_id', Array.from(exerciseIds))
+      .order('logged_at', { ascending: false })
+      .limit(500)
+
+    const prior = (priorRows ?? []) as unknown as PriorLog[]
+
+    // For each library exercise_id, find the most recent OTHER assigned_exercise
+    // (i.e. not on this page) and gather all its logs.
+    const aeChoice = new Map<string, string>() // exercise_id -> assigned_exercise_id
+    for (const log of prior) {
+      if (currentAeIds.has(log.assigned_exercise_id)) continue
+      const exId = log.assigned_exercises?.exercise_id
+      if (!exId) continue
+      if (!aeChoice.has(exId)) {
+        aeChoice.set(exId, log.assigned_exercise_id)
+      }
+    }
+    for (const log of prior) {
+      const exId = log.assigned_exercises?.exercise_id
+      if (!exId) continue
+      const chosen = aeChoice.get(exId)
+      if (!chosen || chosen !== log.assigned_exercise_id) continue
+      const existing = priorByExerciseId.get(exId)
+      if (existing) {
+        existing.logs.push(log)
+      } else {
+        priorByExerciseId.set(exId, { logs: [log], date: log.logged_at })
+      }
+    }
+    // Sort each group's logs by set_number ascending
+    for (const v of priorByExerciseId.values()) {
+      v.logs.sort((a, b) => a.set_number - b.set_number)
+    }
+  }
+
   const flat: FlatExercise[] = []
   for (const sec of session.assigned_sections) {
     for (let i = 0; i < sec.assigned_exercises.length; i++) {
+      const ex = sec.assigned_exercises[i]
+      const exId = ex.exercises?.id ?? null
+      const last = exId ? priorByExerciseId.get(exId) ?? null : null
       flat.push({
-        ex: sec.assigned_exercises[i],
+        ex,
         sectionType: sec.section_type,
         positionInSection: i + 1,
         sectionCount: sec.assigned_exercises.length,
         positionInSession: flat.length + 1,
-        sessionCount: 0, // patched below
+        sessionCount: 0,
+        lastSession: last,
       })
     }
   }
@@ -135,6 +212,18 @@ export default async function SessionPage({
 
   const week = session.assignment_weeks!
   const assignment = week.client_assignments!
+  const isComplete = !!session.completed_at
+
+  // Counts for summary card
+  const totalSets = session.assigned_sections.reduce(
+    (acc, sec) =>
+      acc +
+      sec.assigned_exercises.reduce(
+        (a, ex) => a + ex.exercise_logs.length,
+        0,
+      ),
+    0,
+  )
 
   return (
     <main className="mx-auto w-full max-w-md px-5 pb-12 pt-6">
@@ -149,14 +238,24 @@ export default async function SessionPage({
           </span>
           Back
         </Link>
-        <WioLogo variant="mark" size={96} />
+        <WioLogo variant="mark" size={192} />
       </header>
 
       <div className="mb-6">
         <p className="text-xs uppercase tracking-wide text-brand">
           {assignment.name} · Week {week.week_index}
         </p>
-        <h1 className="mt-1 text-2xl font-semibold">{session.name}</h1>
+        <div className="mt-1 flex items-center gap-2">
+          <h1 className="text-2xl font-semibold">{session.name}</h1>
+          {isComplete && (
+            <span
+              className="rounded-full border border-brand/40 bg-brand/15 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-brand"
+              aria-label="Session completed"
+            >
+              ✓ Done
+            </span>
+          )}
+        </div>
         <p className="mt-1 text-xs text-muted-foreground">
           Session {session.session_index} · {flat.length}{' '}
           exercise{flat.length === 1 ? '' : 's'}
@@ -192,11 +291,27 @@ export default async function SessionPage({
                     entry={entry}
                     sessionId={sessionId}
                     prevAnchor={prev ? `#ex-${prev.ex.id}` : null}
-                    nextAnchor={next ? `#ex-${next.ex.id}` : null}
+                    nextAnchor={next ? `#ex-${next.ex.id}` : '#summary'}
                   />
                 </section>
               )
             })}
+            <section
+              id="summary"
+              className="w-full shrink-0 snap-center"
+            >
+              <SummaryCard
+                sessionId={session.id}
+                sessionName={session.name}
+                isComplete={isComplete}
+                completedAt={session.completed_at}
+                exerciseCount={flat.length}
+                totalSets={totalSets}
+                prevAnchor={
+                  flat.length > 0 ? `#ex-${flat[flat.length - 1].ex.id}` : null
+                }
+              />
+            </section>
           </div>
         </>
       )}
@@ -207,6 +322,13 @@ export default async function SessionPage({
 function fmtWeight(kg: number | null) {
   if (kg === null) return '—'
   return Number.parseFloat(kg.toString()).toString() + ' kg'
+}
+
+function fmtDate(iso: string) {
+  return new Date(iso).toLocaleDateString('en-GB', {
+    day: '2-digit',
+    month: 'short',
+  })
 }
 
 function ExerciseCard({
@@ -220,7 +342,7 @@ function ExerciseCard({
   prevAnchor: string | null
   nextAnchor: string | null
 }) {
-  const { ex, sectionType, positionInSection, sectionCount } = entry
+  const { ex, sectionType, positionInSection, sectionCount, lastSession } = entry
   const name = ex.exercises?.name ?? '(deleted exercise)'
   const videoUrl = ex.exercises?.video_url
   const sharedNotes = ex.notes || ex.exercises?.default_notes
@@ -265,6 +387,33 @@ function ExerciseCard({
           </a>
         )}
       </div>
+
+      {lastSession && (
+        <div className="mb-3 rounded-lg border border-border bg-background p-3">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+            Last time · {fmtDate(lastSession.date)}
+          </p>
+          <ul className="mt-1 flex flex-wrap gap-1.5">
+            {lastSession.logs.map((log) => (
+              <li
+                key={log.id}
+                className="rounded-md bg-muted px-2 py-0.5 text-xs tabular-nums text-foreground"
+              >
+                <span className="opacity-60">#{log.set_number} </span>
+                {log.weight_kg !== null
+                  ? `${Number.parseFloat(log.weight_kg.toString())}kg`
+                  : '—'}
+                {log.reps_done !== null && (
+                  <span> × {log.reps_done}</span>
+                )}
+                {log.rpe !== null && (
+                  <span className="opacity-60"> · {log.rpe}</span>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {ex.exercise_logs.length > 0 && (
         <ul className="mb-3 space-y-1.5">
@@ -371,7 +520,6 @@ function ExerciseCard({
         </form>
       )}
 
-      {/* Prev / next nav anchors. Browser jumps to the snap point. */}
       <nav className="mt-4 flex items-center justify-between text-sm">
         {prevAnchor ? (
           <a
@@ -397,10 +545,102 @@ function ExerciseCard({
             </span>
           </a>
         ) : (
-          <span className="text-xs text-muted-foreground">
-            Last exercise — swipe back when done
-          </span>
+          <span />
         )}
+      </nav>
+    </article>
+  )
+}
+
+function SummaryCard({
+  sessionId,
+  sessionName,
+  isComplete,
+  completedAt,
+  exerciseCount,
+  totalSets,
+  prevAnchor,
+}: {
+  sessionId: string
+  sessionName: string
+  isComplete: boolean
+  completedAt: string | null
+  exerciseCount: number
+  totalSets: number
+  prevAnchor: string | null
+}) {
+  return (
+    <article className="rounded-xl border border-border bg-card p-4">
+      <header className="mb-3 flex items-baseline justify-between gap-2">
+        <span className="text-xs font-semibold uppercase tracking-[0.18em] text-brand">
+          Wrap up
+        </span>
+      </header>
+
+      <h3 className="text-lg font-medium">{sessionName}</h3>
+      <p className="mt-1 text-sm text-muted-foreground">
+        {exerciseCount} exercise{exerciseCount === 1 ? '' : 's'} · {totalSets}{' '}
+        set{totalSets === 1 ? '' : 's'} logged
+      </p>
+
+      {isComplete && completedAt && (
+        <p className="mt-2 text-xs text-brand">
+          Marked complete on{' '}
+          {new Date(completedAt).toLocaleDateString('en-GB', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric',
+          })}
+        </p>
+      )}
+
+      <div className="mt-5">
+        <form
+          action={async () => {
+            'use server'
+            await toggleSessionComplete(sessionId, isComplete)
+          }}
+        >
+          {isComplete ? (
+            <Button
+              type="submit"
+              variant="outline"
+              size="lg"
+              className="w-full"
+            >
+              Mark as not complete
+            </Button>
+          ) : (
+            <Button type="submit" size="lg" className="w-full">
+              ✓ Mark session complete
+            </Button>
+          )}
+        </form>
+      </div>
+
+      <nav className="mt-4 flex items-center justify-between text-sm">
+        {prevAnchor ? (
+          <a
+            href={prevAnchor}
+            className="inline-flex h-10 items-center gap-1 rounded-lg px-2 text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <span aria-hidden className="text-lg">
+              ←
+            </span>
+            Prev
+          </a>
+        ) : (
+          <span />
+        )}
+        <Link
+          href="/dashboard"
+          className="inline-flex h-10 items-center gap-1 rounded-lg px-2 text-brand transition-opacity hover:opacity-80"
+        >
+          Done
+          <span aria-hidden className="text-lg">
+            →
+          </span>
+        </Link>
       </nav>
     </article>
   )

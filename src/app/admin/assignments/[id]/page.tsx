@@ -28,7 +28,7 @@ interface Week {
   week_index: number
   name: string | null
   release_date: string
-  sessions: { count: number }[]
+  sessions: { id: string; completed_at: string | null }[]
 }
 
 export default async function AssignmentDetailPage({
@@ -63,7 +63,7 @@ export default async function AssignmentDetailPage({
     .select(
       `
       id, week_index, name, release_date,
-      sessions:assigned_sessions ( count )
+      sessions:assigned_sessions ( id, completed_at )
     `
     )
     .eq('assignment_id', id)
@@ -166,7 +166,10 @@ export default async function AssignmentDetailPage({
           <ul className="divide-y divide-border rounded border border-border">
             {weeks.map((w) => {
               const released = w.release_date <= today
-              const sessionCount = w.sessions?.[0]?.count ?? 0
+              const sessions = w.sessions ?? []
+              const sessionCount = sessions.length
+              const completeCount = sessions.filter((s) => !!s.completed_at).length
+              const allComplete = sessionCount > 0 && completeCount === sessionCount
               return (
                 <li
                   key={w.id}
@@ -184,6 +187,11 @@ export default async function AssignmentDetailPage({
                       {!released && (
                         <StatusBadge tone="neutral">
                           unlocks {formatDate(w.release_date)}
+                        </StatusBadge>
+                      )}
+                      {sessionCount > 0 && (
+                        <StatusBadge tone={allComplete ? 'brand' : 'muted'}>
+                          {completeCount}/{sessionCount} complete
                         </StatusBadge>
                       )}
                     </div>
