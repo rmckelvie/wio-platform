@@ -178,10 +178,7 @@ export default async function SessionPage({
           <p className="mb-3 text-center text-xs uppercase tracking-[0.2em] text-muted-foreground">
             Swipe to navigate
           </p>
-          <div
-            className="-mx-5 flex snap-x snap-mandatory overflow-x-auto scroll-smooth"
-            style={{ scrollPaddingInline: '1.25rem' }}
-          >
+          <div className="flex snap-x snap-mandatory gap-4 overflow-x-auto scroll-smooth">
             {flat.map((entry, i) => {
               const prev = flat[i - 1]
               const next = flat[i + 1]
@@ -189,7 +186,7 @@ export default async function SessionPage({
                 <section
                   key={entry.ex.id}
                   id={`ex-${entry.ex.id}`}
-                  className="min-w-full shrink-0 snap-center px-5"
+                  className="w-full shrink-0 snap-center"
                 >
                   <ExerciseCard
                     entry={entry}
