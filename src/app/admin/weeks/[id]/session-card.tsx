@@ -153,17 +153,12 @@ export function SessionCard({
             onClick={() => setOpen((o) => !o)}
             aria-expanded={open}
             aria-controls={`session-content-${session.id}`}
-            className="-mx-2 -my-1 flex min-w-0 flex-1 cursor-pointer flex-col items-start rounded-md px-2 py-1 text-left transition-colors hover:bg-secondary"
+            className="-mx-2 -my-1 flex min-w-0 flex-1 touch-manipulation cursor-pointer flex-col items-start rounded-md px-2 py-1 text-left transition-colors hover:bg-secondary active:bg-secondary"
           >
             <span className="text-xs uppercase tracking-wide text-muted-foreground">
               Session {session.session_index}
             </span>
-            <span className="flex items-center gap-2">
-              <span aria-hidden className="text-sm text-muted-foreground">
-                {open ? '▾' : '▸'}
-              </span>
-              <span className="text-lg font-medium">{session.name}</span>
-            </span>
+            <span className="text-lg font-medium">{session.name}</span>
             {!open && (
               <span className="mt-0.5 text-xs text-muted-foreground">
                 {summary}
@@ -172,6 +167,21 @@ export function SessionCard({
           </button>
         </div>
         <div className="flex shrink-0 items-center gap-1">
+          <button
+            type="button"
+            onClick={() => setOpen((o) => !o)}
+            aria-expanded={open}
+            aria-controls={`session-content-${session.id}`}
+            aria-label={open ? 'Collapse session' : 'Expand session to edit'}
+            className="touch-manipulation inline-flex h-9 items-center gap-1 rounded-md border border-border bg-card px-3 text-sm font-medium transition-colors hover:border-brand/60 hover:bg-secondary active:bg-secondary"
+          >
+            <span aria-hidden className="text-base leading-none">
+              {open ? '▾' : '▸'}
+            </span>
+            <span className="hidden sm:inline">
+              {open ? 'Close' : 'Edit'}
+            </span>
+          </button>
           <Link
             href={`/admin/sessions/${session.id}/edit`}
             className={buttonVariants({ variant: 'ghost', size: 'sm' })}
