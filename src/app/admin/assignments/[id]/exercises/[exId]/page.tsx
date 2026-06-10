@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { formatDate } from '@/lib/dates'
 import { sectionLabel, type SectionType } from '@/lib/sections'
 import { StatusBadge } from '@/components/status-badge'
+import { ProgressChart, type ChartPoint } from '@/components/progress-chart'
 
 interface ExerciseLog {
   id: string
@@ -156,6 +157,32 @@ export default async function CrossWeekExercisePage({
   const clientName =
     assignment.profiles?.display_name || assignment.profiles?.email || 'client'
 
+  // Build chart points: max weight logged per week (across any session/set)
+  const chartPoints: ChartPoint[] = weeks.map((w) => {
+    let bestWeight: number | null = null
+    let bestReps: number | null = null
+    for (const r of w.rows) {
+      for (const log of r.logs) {
+        if (log.weight_kg === null) continue
+        if (bestWeight === null || log.weight_kg > bestWeight) {
+          bestWeight = log.weight_kg
+          bestReps = log.reps_done
+        }
+      }
+    }
+    let label: string | undefined
+    if (bestWeight !== null) {
+      const wStr = Number.parseFloat(bestWeight.toString()).toString()
+      label =
+        bestReps !== null ? `${wStr}kg × ${bestReps}` : `${wStr}kg`
+    }
+    return {
+      weekIndex: w.weekIndex,
+      value: bestWeight,
+      label,
+    }
+  })
+
   return (
     <div className="space-y-6">
       <div className="text-sm">
@@ -190,6 +217,15 @@ export default async function CrossWeekExercisePage({
           </a>
         )}
       </header>
+
+      {weeks.length > 0 && (
+        <section>
+          <h2 className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+            Top set per week
+          </h2>
+          <ProgressChart points={chartPoints} yLabel="Heaviest set (kg)" />
+        </section>
+      )}
 
       {weeks.length === 0 ? (
         <p className="text-sm text-muted-foreground">
