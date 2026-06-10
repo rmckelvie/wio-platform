@@ -155,8 +155,10 @@ export default async function SessionPage({
     }
   }
 
-  // Fetch prior logs for these exercise ids (RLS filters to current user)
+  // Fetch all logs for these exercise ids (RLS filters to current user).
+  // Used for BOTH "last time" history AND personal-record detection.
   let priorByExerciseId = new Map<string, LastSession>()
+  const prSet = new Set<string>() // log ids that are new PRs at the time of logging
   if (exerciseIds.size > 0) {
     const { data: priorRows } = await supabase
       .from('exercise_logs')
@@ -174,7 +176,7 @@ export default async function SessionPage({
     const prior = (priorRows ?? []) as unknown as PriorLog[]
 
     // For each library exercise_id, find the most recent OTHER assigned_exercise
-    // (i.e. not on this page) and gather all its logs.
+    // (i.e. not on this page) and gather all its logs for the "last time" panel.
     const aeChoice = new Map<string, string>() // exercise_id -> assigned_exercise_id
     for (const log of prior) {
       if (currentAeIds.has(log.assigned_exercise_id)) continue
@@ -196,9 +198,31 @@ export default async function SessionPage({
         priorByExerciseId.set(exId, { logs: [log], date: log.logged_at })
       }
     }
-    // Sort each group's logs by set_number ascending
     for (const v of priorByExerciseId.values()) {
       v.logs.sort((a, b) => a.set_number - b.set_number)
+    }
+
+    // PR detection: walk logs in chronological order per exercise_id and
+    // mark any log whose weight_kg strictly exceeds every prior log's
+    // weight_kg as a new PR.
+    const byExercise = new Map<string, PriorLog[]>()
+    for (const log of prior) {
+      const exId = log.assigned_exercises?.exercise_id
+      if (!exId) continue
+      if (log.weight_kg === null) continue
+      const arr = byExercise.get(exId) ?? []
+      arr.push(log)
+      byExercise.set(exId, arr)
+    }
+    for (const arr of byExercise.values()) {
+      arr.sort((a, b) => a.logged_at.localeCompare(b.logged_at))
+      let runMax = -Infinity
+      for (const log of arr) {
+        if ((log.weight_kg ?? -Infinity) > runMax) {
+          runMax = log.weight_kg as number
+          prSet.add(log.id)
+        }
+      }
     }
   }
 
@@ -301,6 +325,7 @@ export default async function SessionPage({
                   <ExerciseCard
                     entry={entry}
                     sessionId={sessionId}
+                    prSet={prSet}
                     prevAnchor={prev ? `#ex-${prev.ex.id}` : null}
                     nextAnchor={next ? `#ex-${next.ex.id}` : '#summary'}
                   />
@@ -346,11 +371,13 @@ function fmtDate(iso: string) {
 function ExerciseCard({
   entry,
   sessionId,
+  prSet,
   prevAnchor,
   nextAnchor,
 }: {
   entry: FlatExercise
   sessionId: string
+  prSet: Set<string>
   prevAnchor: string | null
   nextAnchor: string | null
 }) {
@@ -451,45 +478,60 @@ function ExerciseCard({
 
       {ex.exercise_logs.length > 0 && (
         <ul className="mb-3 space-y-1.5">
-          {ex.exercise_logs.map((log) => (
-            <li
-              key={log.id}
-              className="flex items-center gap-3 rounded-lg bg-background px-3 py-2 text-sm tabular-nums"
-            >
-              <span className="w-10 shrink-0 text-xs uppercase tracking-wide text-muted-foreground">
-                Set {log.set_number}
-              </span>
-              <span className="flex-1">
-                <span className="font-medium">{fmtWeight(log.weight_kg)}</span>
-                {log.reps_done !== null && (
-                  <span className="text-muted-foreground"> × </span>
-                )}
-                {log.reps_done !== null && (
-                  <span className="font-medium">{log.reps_done}</span>
-                )}
-                {log.rpe !== null && (
-                  <span className="ml-2 text-xs text-muted-foreground">
-                    RPE {log.rpe}
-                  </span>
-                )}
-              </span>
-              <form
-                action={async () => {
-                  'use server'
-                  await deleteLog(log.id, sessionId)
-                }}
+          {ex.exercise_logs.map((log) => {
+            const isPr = prSet.has(log.id)
+            return (
+              <li
+                key={log.id}
+                className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm tabular-nums ${
+                  isPr
+                    ? 'border border-brand/40 bg-brand/10'
+                    : 'bg-background'
+                }`}
               >
-                <Button
-                  type="submit"
-                  variant="ghost"
-                  size="icon-xs"
-                  aria-label={`Delete set ${log.set_number}`}
+                <span className="w-10 shrink-0 text-xs uppercase tracking-wide text-muted-foreground">
+                  Set {log.set_number}
+                </span>
+                <span className="flex-1">
+                  <span className="font-medium">{fmtWeight(log.weight_kg)}</span>
+                  {log.reps_done !== null && (
+                    <span className="text-muted-foreground"> × </span>
+                  )}
+                  {log.reps_done !== null && (
+                    <span className="font-medium">{log.reps_done}</span>
+                  )}
+                  {log.rpe !== null && (
+                    <span className="ml-2 text-xs text-muted-foreground">
+                      RPE {log.rpe}
+                    </span>
+                  )}
+                  {isPr && (
+                    <span
+                      className="ml-2 inline-flex items-center gap-1 rounded-full border border-brand/40 bg-brand/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-brand"
+                      aria-label="Personal record"
+                    >
+                      🏆 PR
+                    </span>
+                  )}
+                </span>
+                <form
+                  action={async () => {
+                    'use server'
+                    await deleteLog(log.id, sessionId)
+                  }}
                 >
-                  ×
-                </Button>
-              </form>
-            </li>
-          ))}
+                  <Button
+                    type="submit"
+                    variant="ghost"
+                    size="icon-xs"
+                    aria-label={`Delete set ${log.set_number}`}
+                  >
+                    ×
+                  </Button>
+                </form>
+              </li>
+            )
+          })}
         </ul>
       )}
 

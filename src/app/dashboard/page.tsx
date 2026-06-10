@@ -1,11 +1,13 @@
 import Link from 'next/link'
 import { requireUser } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
-import { logout } from './actions'
+import { logout, saveMetric } from './actions'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { WioLogo } from '@/components/wio-logo'
 import { formatDate } from '@/lib/dates'
 import { InstallAppButton } from '@/components/install-app-button'
+import { MetricsTracker } from '@/components/metrics-tracker'
+import { ProgressChart, type ChartPoint } from '@/components/progress-chart'
 
 interface SessionRow {
   id: string
@@ -64,6 +66,54 @@ export default async function DashboardPage() {
   }
   const currentWeeks = Array.from(currentPerAssignment.values())
 
+  // Metrics — today's check-in + recent weight trend
+  const today = new Date().toISOString().slice(0, 10)
+  const sixtyDaysAgo = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000)
+    .toISOString()
+    .slice(0, 10)
+
+  const { data: metricRows } = await supabase
+    .from('client_metrics')
+    .select('measured_on, weight_kg, sleep_hours, energy, notes')
+    .eq('client_id', me.id)
+    .gte('measured_on', sixtyDaysAgo)
+    .order('measured_on', { ascending: true })
+
+  type MetricRow = {
+    measured_on: string
+    weight_kg: number | null
+    sleep_hours: number | null
+    energy: number | null
+    notes: string | null
+  }
+  const metrics = (metricRows ?? []) as MetricRow[]
+  const todayMetric = metrics.find((m) => m.measured_on === today) ?? null
+
+  // Build a weight chart: one point per logged-weight day. Show date
+  // labels only on the first / last / a couple of intermediate points
+  // so the X-axis stays readable.
+  const weightLogs = metrics.filter((m) => m.weight_kg !== null)
+  const fmtTick = (iso: string) =>
+    new Date(iso + 'T00:00:00Z').toLocaleDateString('en-GB', {
+      day: '2-digit',
+      month: 'short',
+    })
+  const n = weightLogs.length
+  const tickIndices = new Set<number>(
+    n <= 4
+      ? weightLogs.map((_, i) => i)
+      : [0, Math.floor(n / 3), Math.floor((2 * n) / 3), n - 1],
+  )
+  const weightChart: ChartPoint[] = weightLogs.map((m, i) => ({
+    weekIndex: i + 1,
+    value: m.weight_kg,
+    label:
+      i === 0 || i === n - 1
+        ? `${Number.parseFloat(m.weight_kg!.toString())}kg`
+        : undefined,
+    xAxisLabel: tickIndices.has(i) ? fmtTick(m.measured_on) : '',
+  }))
+
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-md flex-col px-5 pb-12 pt-8">
       <header className="mb-8 flex items-center justify-between">
@@ -80,9 +130,33 @@ export default async function DashboardPage() {
       </div>
       <div className="mb-4 text-sm">{me.email}</div>
 
-      <div className="mb-8">
+      <div className="mb-6">
         <InstallAppButton />
       </div>
+
+      <div className="mb-8">
+        <MetricsTracker
+          action={saveMetric}
+          today={today}
+          existing={
+            todayMetric && {
+              weight_kg: todayMetric.weight_kg,
+              sleep_hours: todayMetric.sleep_hours,
+              energy: todayMetric.energy,
+              notes: todayMetric.notes,
+            }
+          }
+        />
+      </div>
+
+      {weightChart.length >= 2 && (
+        <section className="mb-8">
+          <h2 className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+            Weight trend · last {weightLogs.length} entries
+          </h2>
+          <ProgressChart points={weightChart} yLabel="Weight (kg)" />
+        </section>
+      )}
 
       {currentWeeks.length === 0 ? (
         <div className="rounded-xl border border-border bg-card p-6 text-center">

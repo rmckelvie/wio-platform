@@ -9,7 +9,12 @@
 export interface ChartPoint {
   weekIndex: number
   value: number | null // null = no data this week
-  label?: string // e.g. "65kg × 5"
+  label?: string // hovering label above the point, e.g. "65kg × 5"
+  /**
+   * Overrides the X-axis tick label. Default is `W{weekIndex}`. Pass an
+   * empty string to hide the tick label for this point.
+   */
+  xAxisLabel?: string
 }
 
 export function ProgressChart({
@@ -129,20 +134,25 @@ export function ProgressChart({
           </g>
         ))}
 
-        {/* X axis labels (every week) */}
-        {points.map((p) => (
-          <text
-            key={p.weekIndex}
-            x={xPos(p.weekIndex)}
-            y={VH - padB + 18}
-            textAnchor="middle"
-            fontSize={12}
-            fill="currentColor"
-            fillOpacity={0.6}
-          >
-            W{p.weekIndex}
-          </text>
-        ))}
+        {/* X axis labels — default "W{n}", or override per-point */}
+        {points.map((p) => {
+          const tick =
+            p.xAxisLabel !== undefined ? p.xAxisLabel : `W${p.weekIndex}`
+          if (!tick) return null
+          return (
+            <text
+              key={p.weekIndex}
+              x={xPos(p.weekIndex)}
+              y={VH - padB + 18}
+              textAnchor="middle"
+              fontSize={12}
+              fill="currentColor"
+              fillOpacity={0.6}
+            >
+              {tick}
+            </text>
+          )
+        })}
 
         {/* Line(s) */}
         {segments.map((seg, i) => (

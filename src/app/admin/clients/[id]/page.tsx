@@ -7,6 +7,7 @@ import {
   ASSIGNMENT_STATUS_TONE,
 } from '@/components/status-badge'
 import { updateClientDisplayName } from '../actions'
+import { ProgressChart, type ChartPoint } from '@/components/progress-chart'
 
 interface Assignment {
   id: string
@@ -66,6 +67,48 @@ export default async function ClientDetailPage({
     .order('start_date', { ascending: false })
 
   const assignments = (assignmentRows ?? []) as Assignment[]
+
+  // Metrics — recent entries + weight chart
+  const sixtyDaysAgo = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000)
+    .toISOString()
+    .slice(0, 10)
+  const { data: metricRows } = await supabase
+    .from('client_metrics')
+    .select('measured_on, weight_kg, sleep_hours, energy, notes')
+    .eq('client_id', id)
+    .gte('measured_on', sixtyDaysAgo)
+    .order('measured_on', { ascending: true })
+
+  type MetricRow = {
+    measured_on: string
+    weight_kg: number | null
+    sleep_hours: number | null
+    energy: number | null
+    notes: string | null
+  }
+  const metrics = (metricRows ?? []) as MetricRow[]
+  const weightLogs = metrics.filter((m) => m.weight_kg !== null)
+  const fmtMetricTick = (iso: string) =>
+    new Date(iso + 'T00:00:00Z').toLocaleDateString('en-GB', {
+      day: '2-digit',
+      month: 'short',
+    })
+  const wn = weightLogs.length
+  const wTickIdx = new Set<number>(
+    wn <= 4
+      ? weightLogs.map((_, i) => i)
+      : [0, Math.floor(wn / 3), Math.floor((2 * wn) / 3), wn - 1],
+  )
+  const weightChart: ChartPoint[] = weightLogs.map((m, i) => ({
+    weekIndex: i + 1,
+    value: m.weight_kg,
+    label:
+      i === 0 || i === wn - 1
+        ? `${Number.parseFloat(m.weight_kg!.toString())}kg`
+        : undefined,
+    xAxisLabel: wTickIdx.has(i) ? fmtMetricTick(m.measured_on) : '',
+  }))
+  const recentMetrics = [...metrics].reverse().slice(0, 5)
 
   return (
     <div className="space-y-8">
@@ -176,6 +219,59 @@ export default async function ClientDetailPage({
               )
             })}
           </ul>
+        )}
+      </section>
+
+      <section className="space-y-3">
+        <h2 className="text-lg font-medium">Metrics</h2>
+        {metrics.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            No check-ins logged yet.
+          </p>
+        ) : (
+          <>
+            {weightChart.length >= 2 && (
+              <ProgressChart
+                points={weightChart}
+                yLabel="Weight (kg)"
+                height={160}
+              />
+            )}
+            <ul className="divide-y divide-border rounded border border-border">
+              {recentMetrics.map((m) => (
+                <li
+                  key={m.measured_on}
+                  className="flex items-center justify-between gap-4 p-3 text-sm"
+                >
+                  <span className="font-medium tabular-nums">
+                    {fmt(m.measured_on)}
+                  </span>
+                  <span className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                    {m.weight_kg !== null && (
+                      <span className="rounded-md bg-muted px-2 py-0.5 tabular-nums text-foreground">
+                        {Number.parseFloat(m.weight_kg.toString())} kg
+                      </span>
+                    )}
+                    {m.sleep_hours !== null && (
+                      <span className="rounded-md bg-muted px-2 py-0.5 tabular-nums">
+                        {Number.parseFloat(m.sleep_hours.toString())}h sleep
+                      </span>
+                    )}
+                    {m.energy !== null && (
+                      <span className="rounded-md bg-muted px-2 py-0.5">
+                        energy {m.energy}/5
+                      </span>
+                    )}
+                    {m.notes && (
+                      <span className="max-w-[14rem] truncate italic">
+                        “{m.notes}”
+                      </span>
+                    )}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </>
         )}
       </section>
 
