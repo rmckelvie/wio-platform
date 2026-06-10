@@ -18,7 +18,7 @@ export default async function EditExercisePage({
   const supabase = await createClient()
   const { data, error } = await supabase
     .from('exercises')
-    .select('id, name, video_url, default_notes, section_types')
+    .select('id, name, video_url, default_notes, section_types, subcategory')
     .eq('id', id)
     .single()
 
@@ -45,6 +45,7 @@ export default async function EditExercisePage({
           video_url: data.video_url,
           default_notes: data.default_notes,
           section_types: sectionTypes,
+          subcategory: data.subcategory,
         }}
         submitLabel="Save changes"
         error={errMsg}

@@ -18,6 +18,11 @@ function parseSectionTypes(formData: FormData): SectionType[] {
     .filter(isSectionType)
 }
 
+function parseSubcategory(v: FormDataEntryValue | null): string | null {
+  const s = (v ?? '').toString().trim()
+  return s.length === 0 ? null : s
+}
+
 export async function createExercise(formData: FormData) {
   await requireAdmin()
   const supabase = await createClient()
@@ -30,6 +35,7 @@ export async function createExercise(formData: FormData) {
     video_url: emptyToNull(formData.get('video_url')),
     default_notes: emptyToNull(formData.get('default_notes')),
     section_types: parseSectionTypes(formData),
+    subcategory: parseSubcategory(formData.get('subcategory')),
   })
 
   if (error) redirect(`/admin/exercises/new?error=${encodeURIComponent(error.message)}`)
@@ -52,6 +58,7 @@ export async function updateExercise(id: string, formData: FormData) {
       video_url: emptyToNull(formData.get('video_url')),
       default_notes: emptyToNull(formData.get('default_notes')),
       section_types: parseSectionTypes(formData),
+      subcategory: parseSubcategory(formData.get('subcategory')),
     })
     .eq('id', id)
 

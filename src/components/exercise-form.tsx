@@ -12,10 +12,20 @@ interface ExerciseFormProps {
     video_url?: string | null
     default_notes?: string | null
     section_types?: SectionType[] | null
+    subcategory?: string | null
   }
   submitLabel: string
   error?: string
 }
+
+const STRENGTH_SUBCATEGORIES = [
+  { value: '', label: '— None —' },
+  { value: 'chest', label: 'Chest' },
+  { value: 'shoulders', label: 'Shoulders' },
+  { value: 'arms', label: 'Arms' },
+  { value: 'legs', label: 'Legs' },
+  { value: 'back', label: 'Back' },
+] as const
 
 const inputClass =
   'rounded border border-input bg-card px-3 py-2 outline-none focus:border-brand focus:ring-2 focus:ring-brand/30'
@@ -66,6 +76,25 @@ export function ExerciseForm({
           ))}
         </div>
       </fieldset>
+
+      <label className="flex flex-col gap-1">
+        <span className="text-sm font-medium">Strength subcategory</span>
+        <select
+          name="subcategory"
+          defaultValue={initial?.subcategory ?? ''}
+          className={inputClass}
+        >
+          {STRENGTH_SUBCATEGORIES.map((s) => (
+            <option key={s.value} value={s.value}>
+              {s.label}
+            </option>
+          ))}
+        </select>
+        <span className="text-xs text-muted-foreground">
+          Only used when Strength is checked above — groups the exercise under
+          Chest / Shoulders / Arms / Legs / Back in the picker.
+        </span>
+      </label>
 
       <label className="flex flex-col gap-1">
         <span className="text-sm font-medium">Video URL</span>

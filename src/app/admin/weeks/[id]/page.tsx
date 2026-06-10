@@ -23,6 +23,20 @@ interface ExerciseLibraryRow {
   id: string
   name: string
   section_types: SectionType[] | null
+  subcategory: string | null
+}
+
+const STRENGTH_SUBCATEGORIES = [
+  'chest',
+  'shoulders',
+  'arms',
+  'legs',
+  'back',
+] as const
+
+function subcategoryLabel(s: string | null): string {
+  if (!s) return 'Other'
+  return s.charAt(0).toUpperCase() + s.slice(1)
 }
 
 interface ExerciseLog {
@@ -138,7 +152,7 @@ export default async function WeekPage({
 
   const { data: libraryRows } = await supabase
     .from('exercises')
-    .select('id, name, section_types')
+    .select('id, name, section_types, subcategory')
     .eq('archived', false)
     .order('name', { ascending: true })
 
@@ -753,11 +767,50 @@ function SectionBlock({
               <option value="" disabled>
                 Pick…
               </option>
-              {filteredLibrary.map((ex) => (
-                <option key={ex.id} value={ex.id}>
-                  {ex.name}
-                </option>
-              ))}
+              {section.section_type === 'strength' ? (
+                <>
+                  {STRENGTH_SUBCATEGORIES.map((sub) => {
+                    const group = filteredLibrary.filter(
+                      (ex) => ex.subcategory === sub,
+                    )
+                    if (group.length === 0) return null
+                    return (
+                      <optgroup key={sub} label={subcategoryLabel(sub)}>
+                        {group.map((ex) => (
+                          <option key={ex.id} value={ex.id}>
+                            {ex.name}
+                          </option>
+                        ))}
+                      </optgroup>
+                    )
+                  })}
+                  {(() => {
+                    const other = filteredLibrary.filter(
+                      (ex) =>
+                        !ex.subcategory ||
+                        !(STRENGTH_SUBCATEGORIES as readonly string[]).includes(
+                          ex.subcategory,
+                        ),
+                    )
+                    if (other.length === 0) return null
+                    return (
+                      <optgroup label="Other">
+                        {other.map((ex) => (
+                          <option key={ex.id} value={ex.id}>
+                            {ex.name}
+                          </option>
+                        ))}
+                      </optgroup>
+                    )
+                  })()}
+                </>
+              ) : (
+                filteredLibrary.map((ex) => (
+                  <option key={ex.id} value={ex.id}>
+                    {ex.name}
+                  </option>
+                ))
+              )}
             </select>
           </label>
           <label className="flex w-20 flex-col gap-1">
