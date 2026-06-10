@@ -41,17 +41,25 @@ export async function createSession(weekId: string, formData: FormData) {
 
   const nextIndex = (existing?.[0]?.session_index ?? 0) + 1
 
-  const { error } = await supabase.from('assigned_sessions').insert({
-    assignment_week_id: weekId,
-    session_index: nextIndex,
-    name,
-  })
+  const { data: inserted, error } = await supabase
+    .from('assigned_sessions')
+    .insert({
+      assignment_week_id: weekId,
+      session_index: nextIndex,
+      name,
+    })
+    .select('id')
+    .single()
 
-  if (error) {
-    redirect(`/admin/weeks/${weekId}?error=${encodeURIComponent(error.message)}`)
+  if (error || !inserted) {
+    redirect(
+      `/admin/weeks/${weekId}?error=${encodeURIComponent(error?.message ?? 'Insert failed')}`,
+    )
   }
 
   revalidatePath(`/admin/weeks/${weekId}`)
+  // Anchor jump auto-expands and scrolls to the new session
+  redirect(`/admin/weeks/${weekId}#session-${inserted.id}`)
 }
 
 export async function updateSession(sessionId: string, formData: FormData) {
@@ -134,20 +142,27 @@ export async function createSection(sessionId: string, formData: FormData) {
 
   const nextOrder = (existing?.[0]?.order_index ?? 0) + 1
 
-  const { error } = await supabase.from('assigned_sections').insert({
-    assigned_session_id: sessionId,
-    order_index: nextOrder,
-    section_type,
-  })
+  const { data: inserted, error } = await supabase
+    .from('assigned_sections')
+    .insert({
+      assigned_session_id: sessionId,
+      order_index: nextOrder,
+      section_type,
+    })
+    .select('id')
+    .single()
 
   const weekId = session?.assignment_week_id
-  if (error) {
+  if (error || !inserted) {
     redirect(
-      `/admin/weeks/${weekId}?error=${encodeURIComponent(error.message)}`,
+      `/admin/weeks/${weekId}?error=${encodeURIComponent(error?.message ?? 'Insert failed')}`,
     )
   }
 
-  if (weekId) revalidatePath(`/admin/weeks/${weekId}`)
+  if (weekId) {
+    revalidatePath(`/admin/weeks/${weekId}`)
+    redirect(`/admin/weeks/${weekId}#section-${inserted.id}`)
+  }
 }
 
 export async function deleteSection(sectionId: string) {
@@ -262,7 +277,12 @@ export async function createAssignedExercise(
     )
   }
 
-  if (weekId) revalidatePath(`/admin/weeks/${weekId}`)
+  if (weekId) {
+    revalidatePath(`/admin/weeks/${weekId}`)
+    // Anchor back to the section so the page scrolls there and the
+    // containing session auto-expands (matched in SessionCard's effect).
+    redirect(`/admin/weeks/${weekId}#section-${sectionId}`)
+  }
 }
 
 export async function updateAssignedExercise(
