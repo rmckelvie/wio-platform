@@ -11,7 +11,7 @@
  * the brand assets so the splash + icon load instantly.
  */
 
-const VERSION = 'wio-v2'
+const VERSION = 'wio-v3'
 const STATIC_ASSETS = [
   '/wio-mark.png',
   '/wio-wordmark.png',
