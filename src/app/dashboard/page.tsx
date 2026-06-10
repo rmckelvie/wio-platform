@@ -5,6 +5,7 @@ import { logout } from './actions'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { WioLogo } from '@/components/wio-logo'
 import { formatDate } from '@/lib/dates'
+import { InstallAppButton } from '@/components/install-app-button'
 
 interface SessionRow {
   id: string
@@ -77,7 +78,11 @@ export default async function DashboardPage() {
       <div className="mb-2 text-xs uppercase tracking-wide text-muted-foreground">
         Signed in as
       </div>
-      <div className="mb-8 text-sm">{me.email}</div>
+      <div className="mb-4 text-sm">{me.email}</div>
+
+      <div className="mb-8">
+        <InstallAppButton />
+      </div>
 
       {currentWeeks.length === 0 ? (
         <div className="rounded-xl border border-border bg-card p-6 text-center">
@@ -183,6 +188,10 @@ function AdminLanding({ email }: { email: string }) {
         <Link href="/admin" className={buttonVariants({ variant: 'outline' })}>
           Open admin
         </Link>
+      </div>
+
+      <div className="mb-6">
+        <InstallAppButton />
       </div>
 
       <form action={logout}>
