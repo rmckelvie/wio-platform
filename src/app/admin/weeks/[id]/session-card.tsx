@@ -123,7 +123,7 @@ export function SessionCard({
       className="rounded border border-border bg-card p-4 scroll-mt-4"
     >
       <header className="flex items-center justify-between gap-2">
-        <div className="flex min-w-0 items-center gap-2">
+        <div className="flex min-w-0 flex-1 items-center gap-2">
           <div className="flex shrink-0 flex-col">
             <form action={moveSession.bind(null, session.id, 'up')}>
               <Button
@@ -153,13 +153,13 @@ export function SessionCard({
             onClick={() => setOpen((o) => !o)}
             aria-expanded={open}
             aria-controls={`session-content-${session.id}`}
-            className="flex min-w-0 cursor-pointer flex-col items-start text-left transition-opacity hover:opacity-80"
+            className="-mx-2 -my-1 flex min-w-0 flex-1 cursor-pointer flex-col items-start rounded-md px-2 py-1 text-left transition-colors hover:bg-secondary"
           >
             <span className="text-xs uppercase tracking-wide text-muted-foreground">
               Session {session.session_index}
             </span>
             <span className="flex items-center gap-2">
-              <span aria-hidden className="text-xs text-muted-foreground">
+              <span aria-hidden className="text-sm text-muted-foreground">
                 {open ? '▾' : '▸'}
               </span>
               <span className="text-lg font-medium">{session.name}</span>
