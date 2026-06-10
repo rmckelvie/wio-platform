@@ -170,7 +170,7 @@ function AdminLanding({ email }: { email: string }) {
   return (
     <main className="mx-auto max-w-2xl px-6 py-12">
       <div className="mb-8 flex items-center gap-4">
-        <WioLogo variant="mark" size={48} />
+        <WioLogo variant="mark" size={144} />
         <div>
           <h1 className="text-2xl font-semibold">Dashboard</h1>
           <p className="text-sm text-muted-foreground">

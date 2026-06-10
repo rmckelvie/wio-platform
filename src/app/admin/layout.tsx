@@ -19,7 +19,7 @@ export default async function AdminLayout({
               href="/admin"
               className="flex items-center gap-2 text-sm font-semibold transition-opacity hover:opacity-80"
             >
-              <WioLogo variant="mark" size={28} />
+              <WioLogo variant="mark" size={84} />
               <span className="hidden sm:inline">WIO admin</span>
             </Link>
             <div className="flex items-center gap-1">
