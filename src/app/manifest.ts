@@ -19,19 +19,19 @@ export default function manifest(): MetadataRoute.Manifest {
     categories: ['health', 'fitness', 'lifestyle'],
     icons: [
       {
-        src: '/wio-mark.png',
+        src: '/wio-icon-wordmark.png',
         sizes: '192x192',
         type: 'image/png',
         purpose: 'any',
       },
       {
-        src: '/wio-mark.png',
+        src: '/wio-icon-wordmark.png',
         sizes: '512x512',
         type: 'image/png',
         purpose: 'any',
       },
       {
-        src: '/wio-mark.png',
+        src: '/wio-icon-wordmark.png',
         sizes: '1024x1024',
         type: 'image/png',
         purpose: 'maskable',
