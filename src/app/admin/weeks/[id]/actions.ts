@@ -90,7 +90,10 @@ export async function updateSession(sessionId: string, formData: FormData) {
 
   if (session?.assignment_week_id) {
     revalidatePath(`/admin/weeks/${session.assignment_week_id}`)
-    redirect(`/admin/weeks/${session.assignment_week_id}`)
+    // Anchor back so the renamed session auto-expands on return.
+    redirect(
+      `/admin/weeks/${session.assignment_week_id}#session-${sessionId}`,
+    )
   }
   redirect('/admin')
 }
@@ -296,16 +299,18 @@ export async function updateAssignedExercise(
   const prescribed_reps = emptyToNull(formData.get('prescribed_reps'))
   const notes = emptyToNull(formData.get('notes'))
 
-  // Look up week id for revalidate + redirect
+  // Look up week id + section id so we can anchor back to where the user
+  // was editing.
   const { data: ae } = await supabase
     .from('assigned_exercises')
     .select(
-      'assigned_sections!inner ( assigned_sessions!inner ( assignment_week_id ) )',
+      'assigned_section_id, assigned_sections!inner ( assigned_sessions!inner ( assignment_week_id ) )',
     )
     .eq('id', id)
     .single()
 
   type Joined = {
+    assigned_section_id: string
     assigned_sections:
       | {
           assigned_sessions:
@@ -322,6 +327,7 @@ export async function updateAssignedExercise(
       | null
   }
   const a = ae as Joined | null
+  const sectionId = a?.assigned_section_id
   const sectionParent = Array.isArray(a?.assigned_sections)
     ? a?.assigned_sections[0]
     : a?.assigned_sections
@@ -354,7 +360,13 @@ export async function updateAssignedExercise(
 
   if (weekId) {
     revalidatePath(`/admin/weeks/${weekId}`)
-    redirect(`/admin/weeks/${weekId}`)
+    // Anchor back to the section the user was editing so the page
+    // scrolls there and the parent session auto-expands.
+    redirect(
+      sectionId
+        ? `/admin/weeks/${weekId}#section-${sectionId}`
+        : `/admin/weeks/${weekId}`,
+    )
   }
   redirect('/admin')
 }
