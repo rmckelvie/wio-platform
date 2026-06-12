@@ -185,10 +185,10 @@ export function SessionCard({
             <span aria-hidden className="text-base leading-none">
               {open ? '▾' : '▸'}
             </span>
-            <span className="pointer-events-none hidden sm:inline">
+            <span className="hidden sm:inline">
               {open ? 'Close' : 'Edit'}
             </span>
-          </label>
+          </button>
           <Link
             href={`/admin/sessions/${session.id}/edit`}
             className={buttonVariants({ variant: 'ghost', size: 'sm' })}
