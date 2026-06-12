@@ -176,27 +176,28 @@ export function SessionCard({
           </details>
         </div>
         <div className="flex shrink-0 items-center gap-1">
-          {/* Explicit Edit/Close toggle implemented as a <label> bound to a
-              hidden checkbox. Label-to-input clicks are HTML form semantics
-              — every browser handles them natively, so we never depend on
-              JS onClick handlers (which can be flaky on iPadOS Safari). */}
-          <input
-            type="checkbox"
-            id={`session-toggle-${session.id}`}
-            checked={open}
-            onChange={(e) => setOpen(e.target.checked)}
-            className="sr-only"
-            aria-hidden
-          />
-          <label
-            htmlFor={`session-toggle-${session.id}`}
-            aria-controls={`session-content-${session.id}`}
-            className="touch-manipulation inline-flex h-9 cursor-pointer select-none items-center gap-1 rounded-md border border-border bg-card px-3 text-sm font-medium transition-colors hover:border-brand/60 hover:bg-secondary active:bg-secondary"
-          >
-            <span aria-hidden className="text-base leading-none">
+          {/* Edit/Close toggle: <label> wrapping a hidden checkbox.
+              Wrapping the input directly (vs separate htmlFor) is the
+              more battle-tested pattern on iOS/iPadOS Safari. The inner
+              spans get pointer-events:none so taps route straight to the
+              label. No hover style — iPad in desktop-class mode reports
+              hover:hover, which causes a "tap once for hover, tap again
+              for click" interaction that swallows the first tap. */}
+          <label className="relative inline-flex h-9 touch-manipulation cursor-pointer select-none items-center gap-1 rounded-md border border-border bg-card px-3 text-sm font-medium transition-colors active:bg-secondary">
+            <input
+              type="checkbox"
+              checked={open}
+              onChange={(e) => setOpen(e.target.checked)}
+              className="absolute inset-0 cursor-pointer opacity-0"
+              aria-controls={`session-content-${session.id}`}
+            />
+            <span
+              aria-hidden
+              className="pointer-events-none text-base leading-none"
+            >
               {open ? '▾' : '▸'}
             </span>
-            <span className="hidden sm:inline">
+            <span className="pointer-events-none hidden sm:inline">
               {open ? 'Close' : 'Edit'}
             </span>
           </label>
