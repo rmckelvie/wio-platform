@@ -155,12 +155,14 @@ export function SessionCard({
             aria-controls={`session-content-${session.id}`}
             className="-mx-2 -my-1 flex min-w-0 flex-1 touch-manipulation cursor-pointer flex-col items-start rounded-md px-2 py-1 text-left transition-colors hover:bg-secondary active:bg-secondary"
           >
-            <span className="text-xs uppercase tracking-wide text-muted-foreground">
+            <span className="pointer-events-none text-xs uppercase tracking-wide text-muted-foreground">
               Session {session.session_index}
             </span>
-            <span className="text-lg font-medium">{session.name}</span>
+            <span className="pointer-events-none text-lg font-medium">
+              {session.name}
+            </span>
             {!open && (
-              <span className="mt-0.5 text-xs text-muted-foreground">
+              <span className="pointer-events-none mt-0.5 text-xs text-muted-foreground">
                 {summary}
               </span>
             )}
@@ -175,10 +177,13 @@ export function SessionCard({
             aria-label={open ? 'Collapse session' : 'Expand session to edit'}
             className="touch-manipulation inline-flex h-9 items-center gap-1 rounded-md border border-border bg-card px-3 text-sm font-medium transition-colors hover:border-brand/60 hover:bg-secondary active:bg-secondary"
           >
-            <span aria-hidden className="text-base leading-none">
+            <span
+              aria-hidden
+              className="pointer-events-none text-base leading-none"
+            >
               {open ? '▾' : '▸'}
             </span>
-            <span className="hidden sm:inline">
+            <span className="pointer-events-none hidden sm:inline">
               {open ? 'Close' : 'Edit'}
             </span>
           </button>
