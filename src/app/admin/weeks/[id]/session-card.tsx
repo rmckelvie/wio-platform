@@ -148,27 +148,36 @@ export function SessionCard({
               </Button>
             </form>
           </div>
-          <button
-            type="button"
-            onClick={() => setOpen((o) => !o)}
-            aria-expanded={open}
-            aria-controls={`session-content-${session.id}`}
-            className="-mx-2 -my-1 flex min-w-0 flex-1 touch-manipulation cursor-pointer flex-col items-start rounded-md px-2 py-1 text-left transition-colors hover:bg-secondary active:bg-secondary"
+          {/* Native <details>/<summary> toggle. We use the element's
+              built-in open state and sync to React so the page hash
+              effect still works. Browser-native click handling is the
+              most reliable cross-platform path — onClick on custom
+              buttons can fail on iPadOS desktop-class Safari. */}
+          <details
+            open={open}
+            onToggle={(e) =>
+              setOpen((e.currentTarget as HTMLDetailsElement).open)
+            }
+            className="min-w-0 flex-1"
           >
-            <span className="pointer-events-none text-xs uppercase tracking-wide text-muted-foreground">
-              Session {session.session_index}
-            </span>
-            <span className="pointer-events-none text-lg font-medium">
-              {session.name}
-            </span>
-            {!open && (
-              <span className="pointer-events-none mt-0.5 text-xs text-muted-foreground">
-                {summary}
+            <summary
+              className="-mx-2 -my-1 flex min-w-0 cursor-pointer touch-manipulation flex-col items-start rounded-md px-2 py-1 text-left transition-colors marker:content-none hover:bg-secondary active:bg-secondary [&::-webkit-details-marker]:hidden"
+            >
+              <span className="text-xs uppercase tracking-wide text-muted-foreground">
+                Session {session.session_index}
               </span>
-            )}
-          </button>
+              <span className="text-lg font-medium">{session.name}</span>
+              {!open && (
+                <span className="mt-0.5 text-xs text-muted-foreground">
+                  {summary}
+                </span>
+              )}
+            </summary>
+          </details>
         </div>
         <div className="flex shrink-0 items-center gap-1">
+          {/* Backup explicit Edit/Close button — same setOpen action.
+              Useful on platforms where summary click is flaky. */}
           <button
             type="button"
             onClick={() => setOpen((o) => !o)}
