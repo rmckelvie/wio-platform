@@ -151,11 +151,30 @@ export default async function DashboardPage() {
 
       {weightChart.length >= 2 && (
         <section className="mb-8">
-          <h2 className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-            Weight trend · last {weightLogs.length} entries
-          </h2>
+          <div className="mb-2 flex items-baseline justify-between gap-2">
+            <h2 className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+              Weight trend · last {weightLogs.length} entries
+            </h2>
+            <Link
+              href="/progress"
+              className="text-xs text-brand hover:underline"
+            >
+              See progress →
+            </Link>
+          </div>
           <ProgressChart points={weightChart} yLabel="Weight (kg)" />
         </section>
+      )}
+
+      {weightChart.length < 2 && me.role === 'client' && (
+        <div className="mb-6 rounded-xl border border-border bg-card p-3 text-center">
+          <Link
+            href="/progress"
+            className="text-sm text-brand hover:underline"
+          >
+            View your progress →
+          </Link>
+        </div>
       )}
 
       {currentWeeks.length === 0 ? (
