@@ -176,26 +176,30 @@ export function SessionCard({
           </details>
         </div>
         <div className="flex shrink-0 items-center gap-1">
-          {/* Backup explicit Edit/Close button — same setOpen action.
-              Useful on platforms where summary click is flaky. */}
-          <button
-            type="button"
-            onClick={() => setOpen((o) => !o)}
-            aria-expanded={open}
+          {/* Explicit Edit/Close toggle implemented as a <label> bound to a
+              hidden checkbox. Label-to-input clicks are HTML form semantics
+              — every browser handles them natively, so we never depend on
+              JS onClick handlers (which can be flaky on iPadOS Safari). */}
+          <input
+            type="checkbox"
+            id={`session-toggle-${session.id}`}
+            checked={open}
+            onChange={(e) => setOpen(e.target.checked)}
+            className="sr-only"
+            aria-hidden
+          />
+          <label
+            htmlFor={`session-toggle-${session.id}`}
             aria-controls={`session-content-${session.id}`}
-            aria-label={open ? 'Collapse session' : 'Expand session to edit'}
-            className="touch-manipulation inline-flex h-9 items-center gap-1 rounded-md border border-border bg-card px-3 text-sm font-medium transition-colors hover:border-brand/60 hover:bg-secondary active:bg-secondary"
+            className="touch-manipulation inline-flex h-9 cursor-pointer select-none items-center gap-1 rounded-md border border-border bg-card px-3 text-sm font-medium transition-colors hover:border-brand/60 hover:bg-secondary active:bg-secondary"
           >
-            <span
-              aria-hidden
-              className="pointer-events-none text-base leading-none"
-            >
+            <span aria-hidden className="text-base leading-none">
               {open ? '▾' : '▸'}
             </span>
-            <span className="pointer-events-none hidden sm:inline">
+            <span className="hidden sm:inline">
               {open ? 'Close' : 'Edit'}
             </span>
-          </button>
+          </label>
           <Link
             href={`/admin/sessions/${session.id}/edit`}
             className={buttonVariants({ variant: 'ghost', size: 'sm' })}
@@ -420,7 +424,7 @@ function SectionBlock({
                     {ae.exercises?.id && (
                       <Link
                         href={`/admin/assignments/${assignmentId}/exercises/${ae.exercises.id}`}
-                        className={buttonVariants({ variant: 'ghost', size: 'xs' })}
+                        className={`${buttonVariants({ variant: 'outline', size: 'sm' })} touch-manipulation`}
                         aria-label="View this exercise across all weeks of the assignment"
                       >
                         History
@@ -428,7 +432,7 @@ function SectionBlock({
                     )}
                     <Link
                       href={`/admin/assigned-exercises/${ae.id}/edit`}
-                      className={buttonVariants({ variant: 'ghost', size: 'xs' })}
+                      className={`${buttonVariants({ variant: 'outline', size: 'sm' })} touch-manipulation`}
                     >
                       Edit
                     </Link>
@@ -436,8 +440,8 @@ function SectionBlock({
                       <Button
                         type="submit"
                         variant="ghost"
-                        size="xs"
-                        className="text-destructive hover:bg-destructive/10"
+                        size="sm"
+                        className="touch-manipulation text-destructive hover:bg-destructive/10"
                       >
                         ×
                       </Button>
