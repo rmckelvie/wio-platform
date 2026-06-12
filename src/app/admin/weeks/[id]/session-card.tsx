@@ -89,7 +89,9 @@ export function SessionCard({
 }) {
   const [open, setOpen] = useState(false)
 
-  // Auto-expand if the URL hash points at this session or any of its sections.
+  // Auto-expand only on mount if the URL hash points at this session or
+  // any of its sections. Empty deps so it can't fire later and undo a
+  // user-driven collapse.
   useEffect(() => {
     if (typeof window === 'undefined') return
     const hash = window.location.hash
@@ -102,7 +104,12 @@ export function SessionCard({
       (sec) => hash === `#section-${sec.id}`,
     )
     if (sectionMatch) setOpen(true)
-  }, [session.id, session.assigned_sections])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  function toggle() {
+    setOpen((o) => !o)
+  }
 
   const usedSectionTypes = new Set(
     session.assigned_sections.map((s) => s.section_type),
@@ -148,53 +155,34 @@ export function SessionCard({
               </Button>
             </form>
           </div>
-          {/* Native <details>/<summary> toggle. We use the element's
-              built-in open state and sync to React so the page hash
-              effect still works. Browser-native click handling is the
-              most reliable cross-platform path — onClick on custom
-              buttons can fail on iPadOS desktop-class Safari. */}
-          <details
-            open={open}
-            onToggle={(e) =>
-              setOpen((e.currentTarget as HTMLDetailsElement).open)
-            }
-            className="min-w-0 flex-1"
+          {/* Dead-simple onClick button on the title row. If this still
+              doesn't fire on iPad, the issue is something deeper than
+              "Safari touch quirk" and we need diagnostics. */}
+          <button
+            type="button"
+            onClick={toggle}
+            className="-mx-2 -my-1 flex min-w-0 flex-1 cursor-pointer flex-col items-start rounded-md px-2 py-1 text-left active:bg-secondary"
           >
-            <summary
-              className="-mx-2 -my-1 flex min-w-0 cursor-pointer touch-manipulation flex-col items-start rounded-md px-2 py-1 text-left transition-colors marker:content-none hover:bg-secondary active:bg-secondary [&::-webkit-details-marker]:hidden"
-            >
-              <span className="text-xs uppercase tracking-wide text-muted-foreground">
-                Session {session.session_index}
+            <span className="text-xs uppercase tracking-wide text-muted-foreground">
+              Session {session.session_index}
+            </span>
+            <span className="text-lg font-medium">{session.name}</span>
+            {!open && (
+              <span className="mt-0.5 text-xs text-muted-foreground">
+                {summary}
               </span>
-              <span className="text-lg font-medium">{session.name}</span>
-              {!open && (
-                <span className="mt-0.5 text-xs text-muted-foreground">
-                  {summary}
-                </span>
-              )}
-            </summary>
-          </details>
+            )}
+          </button>
         </div>
         <div className="flex shrink-0 items-center gap-1">
-          {/* Edit/Close toggle: <label> wrapping a hidden checkbox.
-              Wrapping the input directly (vs separate htmlFor) is the
-              more battle-tested pattern on iOS/iPadOS Safari. The inner
-              spans get pointer-events:none so taps route straight to the
-              label. No hover style — iPad in desktop-class mode reports
-              hover:hover, which causes a "tap once for hover, tap again
-              for click" interaction that swallows the first tap. */}
-          <label className="relative inline-flex h-9 touch-manipulation cursor-pointer select-none items-center gap-1 rounded-md border border-border bg-card px-3 text-sm font-medium transition-colors active:bg-secondary">
-            <input
-              type="checkbox"
-              checked={open}
-              onChange={(e) => setOpen(e.target.checked)}
-              className="absolute inset-0 cursor-pointer opacity-0"
-              aria-controls={`session-content-${session.id}`}
-            />
-            <span
-              aria-hidden
-              className="pointer-events-none text-base leading-none"
-            >
+          {/* Dead-simple Edit/Close button — same plain onClick handler.
+              No details, no label, no checkbox. */}
+          <button
+            type="button"
+            onClick={toggle}
+            className="inline-flex h-9 cursor-pointer items-center gap-1 rounded-md border border-border bg-card px-3 text-sm font-medium active:bg-secondary"
+          >
+            <span aria-hidden className="text-base leading-none">
               {open ? '▾' : '▸'}
             </span>
             <span className="pointer-events-none hidden sm:inline">
