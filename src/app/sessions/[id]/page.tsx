@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { requireUser } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
-import { Button } from '@/components/ui/button'
+import { Button, buttonVariants } from '@/components/ui/button'
 import { WioLogo } from '@/components/wio-logo'
 import { sectionLabel, type SectionType } from '@/lib/sections'
 import { parseMaxSets } from '@/lib/prescription'
@@ -263,15 +263,13 @@ export default async function SessionPage({
 
   return (
     <main className="mx-auto w-full max-w-md px-5 pb-12 pt-6">
-      <header className="mb-6 flex items-start justify-between gap-3">
+      <header className="mb-6 flex items-center justify-between gap-3">
         <Link
           href="/dashboard"
           aria-label="Back to dashboard"
-          className="inline-flex h-12 items-center gap-1 rounded-lg border border-border bg-card px-3 text-sm text-foreground transition-colors hover:bg-secondary"
+          className={buttonVariants({ variant: 'ghost', size: 'sm' })}
         >
-          <span aria-hidden className="text-xl">
-            ←
-          </span>
+          <span aria-hidden>←</span>
           Back
         </Link>
         <WioLogo variant="mark" size={192} />
