@@ -15,6 +15,8 @@ import {
 import { RestTimer } from '@/components/rest-timer'
 import { EmomTimer } from '@/components/emom-timer'
 import { WeightInput } from '@/components/weight-input'
+import { YouTubeEmbed } from '@/components/youtube-embed'
+import { parseYouTubeId } from '@/lib/youtube'
 
 interface ExerciseLog {
   id: string
@@ -428,6 +430,7 @@ function ExerciseCard({
   const { ex, sectionType, positionInSection, sectionCount, lastSession } = entry
   const name = ex.exercises?.name ?? '(deleted exercise)'
   const videoUrl = ex.exercises?.video_url
+  const youTubeId = parseYouTubeId(videoUrl)
   const sharedNotes = ex.notes || ex.exercises?.default_notes
   const prescribed =
     [ex.prescribed_sets, ex.prescribed_reps].filter(Boolean).join(' × ') || null
@@ -453,6 +456,16 @@ function ExerciseCard({
 
   return (
     <article className="rounded-xl border border-border bg-card p-4">
+      {youTubeId && (
+        <div className="mb-3 flex justify-center">
+          <YouTubeEmbed
+            videoId={youTubeId}
+            title={`${name} demo`}
+            className="w-3/4"
+          />
+        </div>
+      )}
+
       <header className="mb-3 flex items-baseline justify-between gap-2">
         <span className="text-xs font-semibold uppercase tracking-[0.18em] text-brand">
           {sectionLabel(sectionType)}
@@ -472,7 +485,7 @@ function ExerciseCard({
         {sharedNotes && (
           <p className="mt-1 text-xs text-muted-foreground">{sharedNotes}</p>
         )}
-        {videoUrl && (
+        {videoUrl && !youTubeId && (
           <a
             href={videoUrl}
             target="_blank"
