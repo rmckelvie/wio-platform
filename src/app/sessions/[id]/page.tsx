@@ -14,6 +14,7 @@ import {
 } from './actions'
 import { RestTimer } from '@/components/rest-timer'
 import { EmomTimer } from '@/components/emom-timer'
+import { WeightInput } from '@/components/weight-input'
 
 interface ExerciseLog {
   id: string
@@ -368,6 +369,51 @@ function fmtDate(iso: string) {
   })
 }
 
+/**
+ * Smart-default weight: most recent current-session log first, then the
+ * heaviest set of the previous session. Returns null when there's no
+ * prior data to lean on.
+ */
+function pickDefaultWeight(
+  currentLogs: ExerciseLog[],
+  last: LastSession | null,
+): number | null {
+  for (let i = currentLogs.length - 1; i >= 0; i--) {
+    const w = currentLogs[i].weight_kg
+    if (w !== null) return w
+  }
+  if (!last) return null
+  let max: number | null = null
+  for (const log of last.logs) {
+    if (log.weight_kg === null) continue
+    if (max === null || log.weight_kg > max) max = log.weight_kg
+  }
+  return max
+}
+
+/**
+ * Smart-default reps:
+ *  - Most recent current-session reps_done if present
+ *  - Else, the prescribed reps if it parses to a single integer (e.g. "5")
+ *    or to a range — we pick the lower bound for ranges like "5-8"
+ *  - Else null (input stays blank)
+ */
+function pickDefaultReps(
+  currentLogs: ExerciseLog[],
+  prescribed: string | null,
+): number | null {
+  for (let i = currentLogs.length - 1; i >= 0; i--) {
+    const r = currentLogs[i].reps_done
+    if (r !== null) return r
+  }
+  if (!prescribed) return null
+  const trimmed = prescribed.trim()
+  if (/^\d+$/.test(trimmed)) return Number.parseInt(trimmed, 10)
+  const range = /^(\d+)\s*[-–]/.exec(trimmed)
+  if (range) return Number.parseInt(range[1], 10)
+  return null
+}
+
 function ExerciseCard({
   entry,
   sessionId,
@@ -400,6 +446,12 @@ function ExerciseCard({
   const emomSets = hasEmom
     ? maxSets ?? Math.max(1, loggedCount + 1)
     : 0
+
+  // Smart defaults: pre-fill weight with the most recent log of this
+  // exercise, current session first then previous session. Reps use the
+  // prescribed value when it parses to an integer, otherwise blank.
+  const defaultWeight = pickDefaultWeight(ex.exercise_logs, lastSession)
+  const defaultReps = pickDefaultReps(ex.exercise_logs, ex.prescribed_reps)
 
   return (
     <article className="rounded-xl border border-border bg-card p-4">
@@ -547,19 +599,11 @@ function ExerciseCard({
           )}
         </div>
       ) : (
-        <form action={logSetBound} className="space-y-2">
-          <div className="grid grid-cols-2 gap-2">
+        <form action={logSetBound} className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
             <label className="flex flex-col gap-1">
               <span className="text-xs text-muted-foreground">Weight (kg)</span>
-              <input
-                name="weight_kg"
-                type="number"
-                inputMode="decimal"
-                step="0.5"
-                min={0}
-                placeholder="0"
-                className={inputClass}
-              />
+              <WeightInput defaultValue={defaultWeight} />
             </label>
             <label className="flex flex-col gap-1">
               <span className="text-xs text-muted-foreground">Reps</span>
@@ -570,6 +614,7 @@ function ExerciseCard({
                 step="1"
                 min={0}
                 placeholder="0"
+                defaultValue={defaultReps ?? ''}
                 className={inputClass}
               />
             </label>
