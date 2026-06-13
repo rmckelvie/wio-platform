@@ -240,7 +240,7 @@ export default async function ProgressPage({
         <Link
           href="/dashboard"
           aria-label="Back to dashboard"
-          className="-ml-2 inline-flex h-12 items-center gap-1 rounded-lg px-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
+          className="inline-flex h-12 items-center gap-1 rounded-lg border border-border bg-card px-3 text-sm text-foreground transition-colors hover:bg-secondary"
         >
           <span aria-hidden className="text-xl">
             ←

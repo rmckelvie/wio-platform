@@ -267,7 +267,7 @@ export default async function SessionPage({
         <Link
           href="/dashboard"
           aria-label="Back to dashboard"
-          className="-ml-2 inline-flex h-12 items-center gap-1 rounded-lg px-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
+          className="inline-flex h-12 items-center gap-1 rounded-lg border border-border bg-card px-3 text-sm text-foreground transition-colors hover:bg-secondary"
         >
           <span aria-hidden className="text-xl">
             ←
@@ -645,7 +645,7 @@ function ExerciseCard({
         {prevAnchor ? (
           <a
             href={prevAnchor}
-            className="inline-flex h-10 items-center gap-1 rounded-lg px-2 text-muted-foreground transition-colors hover:text-foreground"
+            className="inline-flex h-10 items-center gap-1 rounded-lg border border-border bg-card px-3 text-foreground transition-colors hover:bg-secondary"
           >
             <span aria-hidden className="text-lg">
               ←
@@ -658,7 +658,7 @@ function ExerciseCard({
         {nextAnchor ? (
           <a
             href={nextAnchor}
-            className="inline-flex h-10 items-center gap-1 rounded-lg px-2 text-brand transition-opacity hover:opacity-80"
+            className="inline-flex h-10 items-center gap-1 rounded-lg border border-brand/50 bg-brand/10 px-3 text-brand transition-colors hover:bg-brand/20"
           >
             Next
             <span aria-hidden className="text-lg">
@@ -769,7 +769,7 @@ function SummaryCard({
         {prevAnchor ? (
           <a
             href={prevAnchor}
-            className="inline-flex h-10 items-center gap-1 rounded-lg px-2 text-muted-foreground transition-colors hover:text-foreground"
+            className="inline-flex h-10 items-center gap-1 rounded-lg border border-border bg-card px-3 text-foreground transition-colors hover:bg-secondary"
           >
             <span aria-hidden className="text-lg">
               ←
@@ -781,7 +781,7 @@ function SummaryCard({
         )}
         <Link
           href="/dashboard"
-          className="inline-flex h-10 items-center gap-1 rounded-lg px-2 text-brand transition-opacity hover:opacity-80"
+          className="inline-flex h-10 items-center gap-1 rounded-lg border border-brand/50 bg-brand/10 px-3 text-brand transition-colors hover:bg-brand/20"
         >
           Done
           <span aria-hidden className="text-lg">
