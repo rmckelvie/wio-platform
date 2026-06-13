@@ -1,12 +1,28 @@
 import Image from "next/image";
 
+import { cn } from "@/lib/utils";
+
 interface LogoProps {
   variant?: "wordmark" | "mark";
   /** Width in pixels for the wordmark; height for the mark. Defaults sensible per variant. */
   size?: number;
   className?: string;
   priority?: boolean;
+  /**
+   * Mark-variant only: crop the empty vertical space baked into the
+   * source asset (it's a 1:1 square with ~30% black padding top and
+   * bottom). Defaults to true — the rendered logo stays the same size
+   * but the surrounding container only occupies the height the artwork
+   * actually needs, which saves significant header height on mobile.
+   * Pass `crop={false}` for cases where you want the full square frame.
+   */
+  crop?: boolean;
 }
+
+// Mark artwork sits in the middle ~46% of the square. Anything tighter
+// risks clipping the descending triangles; this leaves a small breathing
+// margin on each side.
+const MARK_CROP_RATIO = 0.46;
 
 /**
  * WIO brand logo. Two variants:
@@ -22,18 +38,38 @@ export function WioLogo({
   size,
   className,
   priority,
+  crop = true,
 }: LogoProps) {
   if (variant === "mark") {
     const dim = size ?? 96;
-    return (
+    const img = (
       <Image
         src="/wio-mark.png"
         alt="WIO Fitness"
         width={dim}
         height={dim}
         priority={priority}
-        className={className}
+        className={crop ? undefined : className}
+        style={
+          crop
+            ? { marginTop: Math.round(-dim * (1 - MARK_CROP_RATIO) / 2) }
+            : undefined
+        }
       />
+    );
+
+    if (!crop) return img;
+
+    // Wrapper clips the transparent/black bands above and below the
+    // artwork. The image itself still renders at `dim`×`dim`, so the
+    // visible logo isn't scaled down — just the box around it shrinks.
+    return (
+      <div
+        className={cn("overflow-hidden", className)}
+        style={{ width: dim, height: Math.round(dim * MARK_CROP_RATIO) }}
+      >
+        {img}
+      </div>
     );
   }
 
