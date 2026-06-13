@@ -21,11 +21,12 @@ interface Exercise {
 export default async function ExercisesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ show?: string; tag?: string }>
+  searchParams: Promise<{ show?: string; tag?: string; q?: string }>
 }) {
-  const { show, tag } = await searchParams
+  const { show, tag, q } = await searchParams
   const showArchived = show === 'archived'
   const tagFilter = tag && isSectionType(tag) ? (tag as SectionType) : null
+  const search = (q ?? '').trim()
 
   const supabase = await createClient()
   let query = supabase
@@ -37,10 +38,35 @@ export default async function ExercisesPage({
   if (tagFilter) {
     query = query.contains('section_types', [tagFilter])
   }
+  if (search.length > 0) {
+    // ilike = case-insensitive LIKE; % wildcards on either side for substring match.
+    // Escape user input's % and _ so they're treated as literal characters,
+    // not wildcards.
+    const escaped = search.replace(/[%_]/g, (c) => `\\${c}`)
+    query = query.ilike('name', `%${escaped}%`)
+  }
 
   const { data, error } = await query
 
   const exercises = (data ?? []) as Exercise[]
+
+  // Build href helpers that preserve the other filters
+  const buildHref = (overrides: {
+    show?: string | null
+    tag?: string | null
+    q?: string | null
+  }) => {
+    const params = new URLSearchParams()
+    const finalShow =
+      'show' in overrides ? overrides.show : showArchived ? 'archived' : null
+    const finalTag = 'tag' in overrides ? overrides.tag : tagFilter
+    const finalQ = 'q' in overrides ? overrides.q : search || null
+    if (finalShow) params.set('show', finalShow)
+    if (finalTag) params.set('tag', finalTag)
+    if (finalQ) params.set('q', finalQ)
+    const qs = params.toString()
+    return qs ? `/admin/exercises?${qs}` : '/admin/exercises'
+  }
 
   return (
     <div className="space-y-6">
@@ -51,9 +77,34 @@ export default async function ExercisesPage({
         </Link>
       </div>
 
+      {/* Search */}
+      <form method="get" action="/admin/exercises" className="flex gap-2">
+        {showArchived && <input type="hidden" name="show" value="archived" />}
+        {tagFilter && <input type="hidden" name="tag" value={tagFilter} />}
+        <input
+          type="search"
+          name="q"
+          defaultValue={search}
+          placeholder="Search exercises by name…"
+          aria-label="Search exercises"
+          className="flex-1 rounded-lg border border-input bg-card px-3 py-2 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/30"
+        />
+        <Button type="submit" variant="outline" size="sm">
+          Search
+        </Button>
+        {search && (
+          <Link
+            href={buildHref({ q: null })}
+            className={buttonVariants({ variant: 'ghost', size: 'sm' })}
+          >
+            Clear
+          </Link>
+        )}
+      </form>
+
       <div className="flex gap-2 text-sm">
         <Link
-          href="/admin/exercises"
+          href={buildHref({ show: null })}
           className={
             !showArchived
               ? 'rounded border border-border bg-secondary px-3 py-1 text-foreground'
@@ -63,7 +114,7 @@ export default async function ExercisesPage({
           Active
         </Link>
         <Link
-          href="/admin/exercises?show=archived"
+          href={buildHref({ show: 'archived' })}
           className={
             showArchived
               ? 'rounded border border-border bg-secondary px-3 py-1 text-foreground'
@@ -77,7 +128,7 @@ export default async function ExercisesPage({
       {/* Category filter row */}
       <div className="flex flex-wrap gap-1.5 text-xs">
         <Link
-          href={showArchived ? '/admin/exercises?show=archived' : '/admin/exercises'}
+          href={buildHref({ tag: null })}
           className={
             !tagFilter
               ? 'rounded-full border border-brand bg-brand/15 px-2.5 py-0.5 text-brand'
@@ -86,25 +137,39 @@ export default async function ExercisesPage({
         >
           All
         </Link>
-        {SECTION_TYPES.map((t) => {
-          const params = new URLSearchParams()
-          if (showArchived) params.set('show', 'archived')
-          params.set('tag', t)
-          return (
-            <Link
-              key={t}
-              href={`/admin/exercises?${params}`}
-              className={
-                tagFilter === t
-                  ? 'rounded-full border border-brand bg-brand/15 px-2.5 py-0.5 text-brand'
-                  : 'rounded-full border border-border px-2.5 py-0.5 text-muted-foreground hover:border-foreground hover:text-foreground'
-              }
-            >
-              {sectionLabel(t)}
-            </Link>
-          )
-        })}
+        {SECTION_TYPES.map((t) => (
+          <Link
+            key={t}
+            href={buildHref({ tag: t })}
+            className={
+              tagFilter === t
+                ? 'rounded-full border border-brand bg-brand/15 px-2.5 py-0.5 text-brand'
+                : 'rounded-full border border-border px-2.5 py-0.5 text-muted-foreground hover:border-foreground hover:text-foreground'
+            }
+          >
+            {sectionLabel(t)}
+          </Link>
+        ))}
       </div>
+
+      {(search || tagFilter) && (
+        <p className="text-xs text-muted-foreground">
+          {exercises.length} result{exercises.length === 1 ? '' : 's'}
+          {search && (
+            <>
+              {' '}
+              matching <span className="text-foreground">“{search}”</span>
+            </>
+          )}
+          {tagFilter && (
+            <>
+              {' '}
+              tagged{' '}
+              <span className="text-foreground">{sectionLabel(tagFilter)}</span>
+            </>
+          )}
+        </p>
+      )}
 
       {error && (
         <p className="rounded border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
@@ -114,11 +179,13 @@ export default async function ExercisesPage({
 
       {exercises.length === 0 ? (
         <p className="text-sm text-muted-foreground">
-          {showArchived
-            ? 'No archived exercises.'
-            : tagFilter
-              ? `No exercises tagged ${sectionLabel(tagFilter)}.`
-              : 'No exercises yet — add your first one.'}
+          {search
+            ? `No matches for “${search}”${tagFilter ? ` tagged ${sectionLabel(tagFilter)}` : ''}.`
+            : showArchived
+              ? 'No archived exercises.'
+              : tagFilter
+                ? `No exercises tagged ${sectionLabel(tagFilter)}.`
+                : 'No exercises yet — add your first one.'}
         </p>
       ) : (
         <ul className="divide-y divide-border rounded border border-border">
