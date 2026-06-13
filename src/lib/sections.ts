@@ -5,6 +5,7 @@ export const SECTION_TYPES = [
   'accessories',
   'conditioning',
   'core_conditioning',
+  'cooldown',
 ] as const
 
 export type SectionType = (typeof SECTION_TYPES)[number]
@@ -16,6 +17,7 @@ export const SECTION_LABELS: Record<SectionType, string> = {
   accessories: 'Accessories',
   conditioning: 'Conditioning',
   core_conditioning: 'Core Conditioning',
+  cooldown: 'Cooldown',
 }
 
 export function sectionLabel(t: SectionType): string {
