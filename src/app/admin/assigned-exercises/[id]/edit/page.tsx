@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { Button } from '@/components/ui/button'
+import { Button, buttonVariants } from '@/components/ui/button'
 import { updateAssignedExercise } from '@/app/admin/weeks/[id]/actions'
 
 const inputClass =
@@ -75,10 +75,10 @@ export default async function EditAssignedExercisePage({
 
   return (
     <div className="space-y-6">
-      <div className="text-sm">
+      <div>
         <Link
           href={weekId ? `/admin/weeks/${weekId}` : '/admin'}
-          className="text-muted-foreground hover:text-foreground hover:underline"
+          className={buttonVariants({ variant: 'outline', size: 'sm' })}
         >
           ← Week
         </Link>
@@ -181,7 +181,7 @@ export default async function EditAssignedExercisePage({
           <Button type="submit">Save</Button>
           <Link
             href={weekId ? `/admin/weeks/${weekId}` : '/admin'}
-            className="text-sm text-muted-foreground hover:text-foreground hover:underline"
+            className={buttonVariants({ variant: 'outline' })}
           >
             Cancel
           </Link>

@@ -157,7 +157,7 @@ export default async function DashboardPage() {
             </h2>
             <Link
               href="/progress"
-              className="text-xs text-brand hover:underline"
+              className={buttonVariants({ variant: 'outline', size: 'xs' })}
             >
               See progress →
             </Link>
@@ -167,10 +167,10 @@ export default async function DashboardPage() {
       )}
 
       {weightChart.length < 2 && me.role === 'client' && (
-        <div className="mb-6 rounded-xl border border-border bg-card p-3 text-center">
+        <div className="mb-6 text-center">
           <Link
             href="/progress"
-            className="text-sm text-brand hover:underline"
+            className={buttonVariants({ variant: 'outline' })}
           >
             View your progress →
           </Link>

@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { Button } from '@/components/ui/button'
+import { Button, buttonVariants } from '@/components/ui/button'
 import { deleteClient } from '../../actions'
 
 const inputClass =
@@ -36,10 +36,10 @@ export default async function DeleteClientPage({
 
   return (
     <div className="space-y-6">
-      <div className="text-sm">
+      <div>
         <Link
           href={`/admin/clients/${profile.id}`}
-          className="text-muted-foreground hover:text-foreground hover:underline"
+          className={buttonVariants({ variant: 'outline', size: 'sm' })}
         >
           ← {profile.display_name || profile.email}
         </Link>
@@ -97,7 +97,7 @@ export default async function DeleteClientPage({
           </Button>
           <Link
             href={`/admin/clients/${profile.id}`}
-            className="text-sm text-muted-foreground hover:text-foreground hover:underline"
+            className={buttonVariants({ variant: 'outline' })}
           >
             Cancel
           </Link>

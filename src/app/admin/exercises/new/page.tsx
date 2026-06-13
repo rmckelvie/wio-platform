@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { ExerciseForm } from '@/components/exercise-form'
+import { buttonVariants } from '@/components/ui/button'
 import { createExercise } from '../actions'
 
 export default async function NewExercisePage({
@@ -11,10 +12,10 @@ export default async function NewExercisePage({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3 text-sm">
+      <div className="flex items-center gap-3">
         <Link
           href="/admin/exercises"
-          className="text-muted-foreground hover:text-foreground hover:underline"
+          className={buttonVariants({ variant: 'outline', size: 'sm' })}
         >
           ← Exercises
         </Link>

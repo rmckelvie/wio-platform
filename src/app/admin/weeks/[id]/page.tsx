@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { Button } from '@/components/ui/button'
+import { Button, buttonVariants } from '@/components/ui/button'
 import { formatDate } from '@/lib/dates'
 import { type SectionType } from '@/lib/sections'
 import {
@@ -178,17 +178,16 @@ export default async function WeekPage({
 
   return (
     <div className="space-y-8">
-      <div className="text-sm">
+      <div className="flex flex-wrap items-center gap-2">
         <Link
           href={`/admin/assignments/${week.assignment_id}`}
-          className="text-muted-foreground hover:text-foreground hover:underline"
+          className={buttonVariants({ variant: 'outline', size: 'sm' })}
         >
           ← {assignment.name}
         </Link>
-        <span className="mx-2 text-muted-foreground">·</span>
         <Link
           href={`/admin/clients/${assignment.client_id}`}
-          className="text-muted-foreground hover:text-foreground hover:underline"
+          className={buttonVariants({ variant: 'outline', size: 'sm' })}
         >
           {clientName}
         </Link>

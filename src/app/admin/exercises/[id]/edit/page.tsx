@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { ExerciseForm } from '@/components/exercise-form'
+import { buttonVariants } from '@/components/ui/button'
 import { updateExercise } from '../../actions'
 import type { SectionType } from '@/lib/sections'
 
@@ -29,10 +30,10 @@ export default async function EditExercisePage({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3 text-sm">
+      <div className="flex items-center gap-3">
         <Link
           href="/admin/exercises"
-          className="text-muted-foreground hover:text-foreground hover:underline"
+          className={buttonVariants({ variant: 'outline', size: 'sm' })}
         >
           ← Exercises
         </Link>

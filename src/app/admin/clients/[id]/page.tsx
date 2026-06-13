@@ -112,10 +112,10 @@ export default async function ClientDetailPage({
 
   return (
     <div className="space-y-8">
-      <div className="text-sm">
+      <div>
         <Link
           href="/admin/clients"
-          className="text-muted-foreground hover:text-foreground hover:underline"
+          className={buttonVariants({ variant: 'outline', size: 'sm' })}
         >
           ← Clients
         </Link>

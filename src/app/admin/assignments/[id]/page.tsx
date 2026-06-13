@@ -77,10 +77,10 @@ export default async function AssignmentDetailPage({
 
   return (
     <div className="space-y-8">
-      <div className="text-sm">
+      <div>
         <Link
           href={`/admin/clients/${a.client_id}`}
-          className="text-muted-foreground hover:text-foreground hover:underline"
+          className={buttonVariants({ variant: 'outline', size: 'sm' })}
         >
           ← {clientName}
         </Link>

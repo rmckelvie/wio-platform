@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { Button } from '@/components/ui/button'
+import { Button, buttonVariants } from '@/components/ui/button'
 import { deleteAssignment } from '../actions'
 import { formatDate, addDays } from '@/lib/dates'
 
@@ -59,10 +59,10 @@ export default async function DeleteAssignmentPage({
 
   return (
     <div className="space-y-6">
-      <div className="text-sm">
+      <div>
         <Link
           href={`/admin/assignments/${a.id}`}
-          className="text-muted-foreground transition-colors hover:text-foreground hover:underline"
+          className={buttonVariants({ variant: 'outline', size: 'sm' })}
         >
           ← {a.name}
         </Link>
@@ -123,7 +123,7 @@ export default async function DeleteAssignmentPage({
           </Button>
           <Link
             href={`/admin/assignments/${a.id}`}
-            className="text-sm text-muted-foreground transition-colors hover:text-foreground hover:underline"
+            className={buttonVariants({ variant: 'outline' })}
           >
             Cancel
           </Link>

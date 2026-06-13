@@ -5,6 +5,7 @@ import { formatDate } from '@/lib/dates'
 import { sectionLabel, type SectionType } from '@/lib/sections'
 import { StatusBadge } from '@/components/status-badge'
 import { ProgressChart, type ChartPoint } from '@/components/progress-chart'
+import { buttonVariants } from '@/components/ui/button'
 
 interface ExerciseLog {
   id: string
@@ -185,17 +186,16 @@ export default async function CrossWeekExercisePage({
 
   return (
     <div className="space-y-6">
-      <div className="text-sm">
+      <div className="flex flex-wrap items-center gap-2">
         <Link
           href={`/admin/assignments/${assignmentId}`}
-          className="text-muted-foreground transition-colors hover:text-foreground hover:underline"
+          className={buttonVariants({ variant: 'outline', size: 'sm' })}
         >
           ← {assignment.name}
         </Link>
-        <span className="mx-2 text-muted-foreground">·</span>
         <Link
           href={`/admin/clients/${assignment.client_id}`}
-          className="text-muted-foreground transition-colors hover:text-foreground hover:underline"
+          className={buttonVariants({ variant: 'outline', size: 'sm' })}
         >
           {clientName}
         </Link>

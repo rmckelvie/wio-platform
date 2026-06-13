@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { Button } from '@/components/ui/button'
+import { Button, buttonVariants } from '@/components/ui/button'
 import { createAssignment } from '../actions'
 
 const inputClass =
@@ -31,10 +31,10 @@ export default async function NewAssignmentPage({
 
   return (
     <div className="space-y-6">
-      <div className="text-sm">
+      <div>
         <Link
           href={`/admin/clients/${clientId}`}
-          className="text-muted-foreground hover:text-foreground hover:underline"
+          className={buttonVariants({ variant: 'outline', size: 'sm' })}
         >
           ← {profile.display_name || profile.email}
         </Link>
