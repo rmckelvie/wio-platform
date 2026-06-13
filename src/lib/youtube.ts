@@ -52,3 +52,50 @@ export function parseYouTubeId(url: string | null | undefined): string | null {
   if (!id) return null
   return /^[A-Za-z0-9_-]{11}$/.test(id) ? id : null
 }
+
+/**
+ * Server-side check: is this YouTube URL embeddable in an iframe?
+ *
+ * Uses YouTube's public oEmbed endpoint, which responds:
+ *   - 200 + JSON: video exists and can be embedded
+ *   - 401:        uploader has disabled embedding
+ *   - 403:        video is private
+ *   - 404:        video doesn't exist or has been deleted
+ *
+ * Returns:
+ *   - true  when oEmbed returns 200
+ *   - false on 401 / 403 / 404
+ *   - null  for non-YouTube URLs, malformed URLs, or network errors —
+ *           callers persist the null and decide whether to retry later.
+ *
+ * Safe to call from server actions / route handlers / RSC. Do not call
+ * from the browser — oEmbed sets CORS headers that block fetch from
+ * untrusted origins.
+ */
+export async function checkYouTubeEmbed(
+  url: string | null | undefined,
+): Promise<boolean | null> {
+  const id = parseYouTubeId(url)
+  if (!id) return null
+
+  const oembed = `https://www.youtube.com/oembed?url=${encodeURIComponent(
+    `https://www.youtube.com/watch?v=${id}`,
+  )}&format=json`
+
+  try {
+    const res = await fetch(oembed, {
+      // No caching: we want the live answer when a coach saves an edit,
+      // and the value is persisted anyway.
+      cache: 'no-store',
+    })
+    if (res.status === 200) return true
+    if (res.status === 401 || res.status === 403 || res.status === 404) {
+      return false
+    }
+    // Anything else (5xx, rate limit, weird CDN response) — don't lock in
+    // a false-positive. Leave null so a retry can recover.
+    return null
+  } catch {
+    return null
+  }
+}

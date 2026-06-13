@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
-import { setArchived } from './actions'
+import { recheckAllEmbedFlags, setArchived } from './actions'
 import { Button, buttonVariants } from '@/components/ui/button'
 import {
   SECTION_TYPES,
@@ -21,9 +21,15 @@ interface Exercise {
 export default async function ExercisesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ show?: string; tag?: string; q?: string }>
+  searchParams: Promise<{
+    show?: string
+    tag?: string
+    q?: string
+    info?: string
+    error?: string
+  }>
 }) {
-  const { show, tag, q } = await searchParams
+  const { show, tag, q, info, error: infoError } = await searchParams
   const showArchived = show === 'archived'
   const tagFilter = tag && isSectionType(tag) ? (tag as SectionType) : null
   const search = (q ?? '').trim()
@@ -70,12 +76,30 @@ export default async function ExercisesPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-2xl font-semibold">Exercise library</h1>
-        <Link href="/admin/exercises/new" className={buttonVariants()}>
-          New exercise
-        </Link>
+        <div className="flex flex-wrap items-center gap-2">
+          <form action={recheckAllEmbedFlags}>
+            <Button type="submit" variant="outline" size="sm">
+              Re-check video embeds
+            </Button>
+          </form>
+          <Link href="/admin/exercises/new" className={buttonVariants()}>
+            New exercise
+          </Link>
+        </div>
       </div>
+
+      {info && (
+        <p className="rounded border border-brand/30 bg-brand/10 p-3 text-sm text-brand">
+          {decodeURIComponent(info)}
+        </p>
+      )}
+      {infoError && (
+        <p className="rounded border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+          {decodeURIComponent(infoError)}
+        </p>
+      )}
 
       {/* Search */}
       <form method="get" action="/admin/exercises" className="flex gap-2">

@@ -40,6 +40,7 @@ interface AssignedExercise {
     id: string
     name: string
     video_url: string | null
+    embed_allowed: boolean | null
     default_notes: string | null
   } | null
   exercise_logs: ExerciseLog[]
@@ -126,7 +127,7 @@ export default async function SessionPage({
         assigned_exercises (
           id, order_index, prescribed_sets, prescribed_reps, notes,
           rest_seconds, work_interval_seconds,
-          exercises ( id, name, video_url, default_notes ),
+          exercises ( id, name, video_url, embed_allowed, default_notes ),
           exercise_logs (
             id, set_number, weight_kg, reps_done, rpe, notes, logged_at
           )
@@ -430,7 +431,11 @@ function ExerciseCard({
   const { ex, sectionType, positionInSection, sectionCount, lastSession } = entry
   const name = ex.exercises?.name ?? '(deleted exercise)'
   const videoUrl = ex.exercises?.video_url
-  const youTubeId = parseYouTubeId(videoUrl)
+  const embedAllowed = ex.exercises?.embed_allowed
+  // Only render the inline player when the oEmbed check confirmed it.
+  // null (unknown) and false (blocked) both fall through to the text link
+  // so clients never see YouTube's "Watch on YouTube" error tile.
+  const youTubeId = embedAllowed === true ? parseYouTubeId(videoUrl) : null
   const sharedNotes = ex.notes || ex.exercises?.default_notes
   const prescribed =
     [ex.prescribed_sets, ex.prescribed_reps].filter(Boolean).join(' × ') || null
@@ -457,13 +462,11 @@ function ExerciseCard({
   return (
     <article className="rounded-xl border border-border bg-card p-4">
       {youTubeId && (
-        <div className="mb-3 flex justify-center">
-          <YouTubeEmbed
-            videoId={youTubeId}
-            title={`${name} demo`}
-            className="w-3/4"
-          />
-        </div>
+        <YouTubeEmbed
+          videoId={youTubeId}
+          title={`${name} demo`}
+          className="mb-3 w-full"
+        />
       )}
 
       <header className="mb-3 flex items-baseline justify-between gap-2">
