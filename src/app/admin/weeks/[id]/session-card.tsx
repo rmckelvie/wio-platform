@@ -292,8 +292,8 @@ function SectionBlock({
       id={`section-${section.id}`}
       className="rounded border border-border/60 bg-background p-3 scroll-mt-4"
     >
-      <header className="mb-2 flex items-center justify-between">
-        <div className="flex items-center gap-2">
+      <header className="mb-2 flex items-center justify-between gap-2">
+        <div className="flex min-w-0 items-center gap-1">
           <form action={moveSection.bind(null, section.id, 'up')}>
             <Button
               type="submit"
@@ -316,7 +316,7 @@ function SectionBlock({
               ↓
             </Button>
           </form>
-          <h3 className="text-sm font-medium uppercase tracking-wide text-brand">
+          <h3 className="truncate text-sm font-medium uppercase tracking-wide text-brand">
             {sectionLabel(section.section_type)}
           </h3>
         </div>
@@ -325,9 +325,10 @@ function SectionBlock({
             type="submit"
             variant="ghost"
             size="xs"
-            className="text-destructive hover:bg-destructive/10"
+            className="shrink-0 text-destructive hover:bg-destructive/10"
           >
-            Delete section
+            <span className="sm:hidden">Delete</span>
+            <span className="hidden sm:inline">Delete section</span>
           </Button>
         </form>
       </header>
@@ -340,9 +341,15 @@ function SectionBlock({
             const isFirstEx = i === 0
             const isLastEx = i === section.assigned_exercises.length - 1
             const logs = ae.exercise_logs ?? []
+            // Combine prescribed sets × reps into a single chip so we
+            // don't burn 150px of fixed-width columns on phones.
+            const prescribedChip =
+              ae.prescribed_sets && ae.prescribed_reps
+                ? `${ae.prescribed_sets} × ${ae.prescribed_reps}`
+                : ae.prescribed_sets || ae.prescribed_reps || null
             return (
-              <li key={ae.id} className="py-2 text-sm">
-                <div className="flex items-center gap-3">
+              <li key={ae.id} className="py-2.5 text-sm">
+                <div className="flex items-start gap-2">
                   <div className="flex shrink-0 flex-col">
                     <form
                       action={moveAssignedExercise.bind(null, ae.id, 'up')}
@@ -372,23 +379,30 @@ function SectionBlock({
                     </form>
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">
+                    {/* Name + prescription chips. flex-wrap lets the
+                        chips drop to a new line on narrow screens
+                        rather than colliding with the name. */}
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                      <span className="font-medium leading-tight break-words">
                         {ae.exercises?.name ?? '(deleted exercise)'}
                       </span>
-                      {ae.work_interval_seconds && (
+                      {prescribedChip && (
+                        <span className="rounded-full border border-border bg-card px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide tabular-nums text-foreground">
+                          {prescribedChip}
+                        </span>
+                      )}
+                      {ae.work_interval_seconds ? (
                         <span className="rounded-full border border-brand/40 bg-brand/15 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-brand">
                           EMOM {ae.work_interval_seconds}s
                         </span>
-                      )}
-                      {!ae.work_interval_seconds && ae.rest_seconds !== null && (
+                      ) : ae.rest_seconds !== null ? (
                         <span className="rounded-full border border-border bg-secondary px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
                           rest {ae.rest_seconds}s
                         </span>
-                      )}
+                      ) : null}
                     </div>
                     {ae.notes && (
-                      <div className="text-xs text-muted-foreground">
+                      <div className="mt-1 text-xs text-muted-foreground">
                         {ae.notes}
                       </div>
                     )}
@@ -397,49 +411,48 @@ function SectionBlock({
                         href={ae.exercises.video_url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-xs text-brand hover:underline"
+                        className="mt-1 inline-block text-xs text-brand hover:underline"
                       >
                         Demo
                       </a>
                     )}
-                  </div>
-                  <div className="w-16 text-right tabular-nums text-xs">
-                    {ae.prescribed_sets ?? '—'}
-                  </div>
-                  <div className="w-20 text-right tabular-nums text-xs">
-                    {ae.prescribed_reps ?? '—'}
-                  </div>
-                  <div className="flex shrink-0 items-center gap-1">
-                    {ae.exercises?.id && (
+
+                    {/* Actions live in their own row beneath the name.
+                        Keeps the name legible at any width and gives the
+                        touch targets full breathing room. */}
+                    <div className="mt-2 flex flex-wrap items-center gap-1">
+                      {ae.exercises?.id && (
+                        <Link
+                          href={`/admin/assignments/${assignmentId}/exercises/${ae.exercises.id}`}
+                          className={`${buttonVariants({ variant: 'outline', size: 'sm' })} touch-manipulation`}
+                          aria-label="View this exercise across all weeks of the assignment"
+                        >
+                          History
+                        </Link>
+                      )}
                       <Link
-                        href={`/admin/assignments/${assignmentId}/exercises/${ae.exercises.id}`}
+                        href={`/admin/assigned-exercises/${ae.id}/edit`}
                         className={`${buttonVariants({ variant: 'outline', size: 'sm' })} touch-manipulation`}
-                        aria-label="View this exercise across all weeks of the assignment"
                       >
-                        History
+                        Edit
                       </Link>
-                    )}
-                    <Link
-                      href={`/admin/assigned-exercises/${ae.id}/edit`}
-                      className={`${buttonVariants({ variant: 'outline', size: 'sm' })} touch-manipulation`}
-                    >
-                      Edit
-                    </Link>
-                    <form action={deleteAssignedExercise.bind(null, ae.id)}>
-                      <Button
-                        type="submit"
-                        variant="ghost"
-                        size="sm"
-                        className="touch-manipulation text-destructive hover:bg-destructive/10"
-                      >
-                        ×
-                      </Button>
-                    </form>
+                      <form action={deleteAssignedExercise.bind(null, ae.id)}>
+                        <Button
+                          type="submit"
+                          variant="ghost"
+                          size="sm"
+                          aria-label="Delete exercise"
+                          className="touch-manipulation text-destructive hover:bg-destructive/10"
+                        >
+                          ×
+                        </Button>
+                      </form>
+                    </div>
                   </div>
                 </div>
 
                 {logs.length > 0 && (
-                  <div className="ml-8 mt-1.5 flex flex-wrap items-center gap-1.5 text-xs">
+                  <div className="ml-8 mt-2 flex flex-wrap items-center gap-1.5 text-xs">
                     <span className="uppercase tracking-wide text-muted-foreground">
                       Client logged:
                     </span>
